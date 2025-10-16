@@ -1,0 +1,7 @@
+body { background-color: #f8f9fa; }
+.sidebar { background-color: #343a40; color: white; padding: 15px; height: 100vh; }
+.sidebar a { color: white; text-decoration: none; display: block; padding: 10px 15px; border-radius: 5px; }
+.sidebar a:hover, .sidebar a.active { background-color: #495057; }
+.content-section { display: none; padding: 20px; }
+.content-section.active { display: block; }
+#auth-section { max-width: 500px; margin: 50px auto; border: 1px solid #ddd; border-radius: 8px; background-color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 40px; }
