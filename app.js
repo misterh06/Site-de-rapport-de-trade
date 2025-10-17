@@ -4,9 +4,9 @@
 import { auth, db } from './firebase-config.js';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { collection, addDoc, getDocs, query, where, orderBy, doc, updateDoc, deleteDoc, arrayUnion, limit, startAfter, startAt } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import { renderCharts, updateChartColors, initChartEventListeners } from './charts.js';
 
 // --- Variables Globales ---
-let selectedYear = new Date().getFullYear();
 let openPositions = []; 
 let closedPositions = [];
 let allClosedPositionsForStats = [];
@@ -230,7 +230,7 @@ async function updateAllViews() {
     renderClosedPositionsHistory();
     renderLastClosedPositions();
     updateDashboardStats();
-    drawCharts(); 
+    renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL); 
     updateAccountBalances();     
     renderAccountTransactions();
     updateDatalists(); 
@@ -246,7 +246,7 @@ function showSection(sectionId) {
         
         // DESSINER LES GRAPHIQUES UNIQUEMENT SI LA SECTION EST VISIBLE
         if (sectionId === 'dashboard' || sectionId === 'reports-analytics') {
-            drawCharts();
+            renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL);
         }
     }
 
@@ -362,158 +362,7 @@ function renderLastClosedPositions() {
 
 // DANS app.js - REMPLACEZ L'ANCIENNE FONCTION PAR CELLE-CI
 
-function drawCharts() {
-    // Destruction des anciennes instances
-    if (window.performanceChartInstance) window.performanceChartInstance.destroy();
-    if (window.monthlyPnLChartInstance) window.monthlyPnLChartInstance.destroy();
-    if (window.winRateByAssetChartInstance) window.winRateByAssetChartInstance.destroy();
-    if (window.monthlyActivityChartInstance) window.monthlyActivityChartInstance.destroy();
-    if (window.longShortPnlChartInstance) window.longShortPnlChartInstance.destroy();
-    if (window.avgWinLossChartInstance) window.avgWinLossChartInstance.destroy();
 
-    // --- LOGIQUE COMMUNE POUR LES GRAPHIQUES ---
-    const monthLabels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"];
-    const positionsForYear = allClosedPositionsForStats.filter(p => {
-        const closingDate = getClosingDate(p);
-        return closingDate instanceof Date && closingDate.getFullYear() === selectedYear;
-    });
-    updateYearNavigatorUI();
-
-    // --- 1. GRAPHIQUE DE PERFORMANCE CUMULATIVE ---
-    const performanceCtx = document.getElementById('performanceChart');
-    if (performanceCtx) {
-        const positionsWithClosingDate = allClosedPositionsForStats
-            .map(p => ({ ...p, closingDate: getClosingDate(p) }))
-            .filter(p => p.closingDate instanceof Date)
-            .sort((a, b) => a.closingDate - b.closingDate);
-        const labels = positionsWithClosingDate.map(p => formatDate(p.closingDate));
-        const cumulativePnLByCurrency = {};
-        const dataByCurrency = {};
-        const allCurrencies = [...new Set(positionsWithClosingDate.map(p => p.currency))];
-        allCurrencies.forEach(currency => {
-            cumulativePnLByCurrency[currency] = 0;
-            dataByCurrency[currency] = [];
-        });
-        positionsWithClosingDate.forEach(pos => {
-            cumulativePnLByCurrency[pos.currency] += calculatePositionPnL(pos);
-            allCurrencies.forEach(currency => {
-                dataByCurrency[currency].push(cumulativePnLByCurrency[currency]);
-            });
-        });
-        const colors = ['rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgb(255, 205, 86)'];
-        const datasets = allCurrencies.map((currency, index) => ({
-            label: `Performance Cumulative (${currency})`,
-            data: dataByCurrency[currency],
-            borderColor: colors[index % colors.length],
-            tension: 0.1,
-            fill: false
-        }));
-        window.performanceChartInstance = new Chart(performanceCtx, {
-            type: 'line',
-            data: { labels: labels, datasets: datasets },
-            options: { responsive: true, plugins: { legend: { position: 'top' }, title: { display: true, text: 'Courbe de Performance Cumulative par Devise' } } }
-        });
-    }
-
-    // --- 2. GRAPHIQUE P&L MENSUEL ---
-    const monthlyPnLCtx = document.getElementById('monthlyPnLChart');
-    if (monthlyPnLCtx) {
-        const monthlyPnLData = Array(12).fill(0);
-        positionsForYear.forEach(pos => {
-            const closingDate = getClosingDate(pos);
-            monthlyPnLData[closingDate.getMonth()] += calculatePositionPnL(pos);
-        });
-        window.monthlyPnLChartInstance = new Chart(monthlyPnLCtx, {
-            type: 'bar',
-            data: { labels: monthLabels, datasets: [{ label: 'Profit/Perte Net Mensuel', data: monthlyPnLData, backgroundColor: monthlyPnLData.map(pnl => pnl >= 0 ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)') }] }
-        });
-    }
-
-    // --- 3. GRAPHIQUE TAUX DE RÉUSSITE PAR ACTIF ---
-    const winRateByAssetCtx = document.getElementById('winRateByAssetChart');
-    if (winRateByAssetCtx) {
-        const assetStats = {};
-        allClosedPositionsForStats.forEach(pos => {
-            if (!assetStats[pos.asset]) assetStats[pos.asset] = { total: 0, wins: 0 };
-            assetStats[pos.asset].total++;
-            if (calculatePositionPnL(pos) >= 0) assetStats[pos.asset].wins++;
-        });
-        const labels = Object.keys(assetStats);
-        const data = labels.map(asset => (assetStats[asset].wins / assetStats[asset].total) * 100);
-        window.winRateByAssetChartInstance = new Chart(winRateByAssetCtx, {
-            type: 'bar', data: { labels, datasets: [{ label: 'Taux de Réussite (%)', data, backgroundColor: 'rgba(54, 162, 235, 0.6)' }] },
-            options: { scales: { y: { beginAtZero: true, max: 100 } } }
-        });
-    }
-
-    // --- 4. GRAPHIQUE ACTIVITÉ MENSUELLE ---
-    const monthlyActivityCtx = document.getElementById('monthlyActivityChart');
-    if (monthlyActivityCtx) {
-        const monthlyTotals = Array(12).fill(0);
-        const monthlyWins = Array(12).fill(0);
-        positionsForYear.forEach(pos => {
-            const monthIndex = getClosingDate(pos).getMonth();
-            monthlyTotals[monthIndex]++;
-            if (calculatePositionPnL(pos) >= 0) monthlyWins[monthIndex]++;
-        });
-        const winRateData = monthlyTotals.map((total, index) => total > 0 ? (monthlyWins[index] / total) * 100 : 0);
-        window.monthlyActivityChartInstance = new Chart(monthlyActivityCtx, {
-            type: 'bar',
-            data: { labels: monthLabels, datasets: [{ type: 'bar', label: 'Nombre de Trades', data: monthlyTotals, backgroundColor: 'rgba(54, 162, 235, 0.6)', yAxisID: 'yTrades' }, { type: 'line', label: 'Taux de Gain (%)', data: winRateData, borderColor: 'rgba(255, 159, 64, 1)', backgroundColor: 'rgba(255, 159, 64, 0.6)', yAxisID: 'yWinRate', tension: 0.1 }] },
-            options: { scales: { yTrades: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: 'Nombre de Trades' } }, yWinRate: { type: 'linear', position: 'right', min: 0, max: 100, title: { display: true, text: 'Taux de Gain (%)' }, grid: { drawOnChartArea: false } } } }
-        });
-    }
-    
-    // --- 5. GRAPHIQUE LONG VS SHORT ---
-    const longShortCtx = document.getElementById('longShortPnlChart');
-    const longShortStatsDisplay = document.getElementById('longShortStatsDisplay');
-    if (longShortCtx && longShortStatsDisplay) {
-        const typeStats = { long: { totalPnl: 0, wins: 0, count: 0 }, short: { totalPnl: 0, wins: 0, count: 0 } };
-        allClosedPositionsForStats.forEach(pos => {
-            const pnl = calculatePositionPnL(pos);
-            if (pos.type === 'long' || pos.type === 'short') {
-                typeStats[pos.type].count++;
-                typeStats[pos.type].totalPnl += pnl;
-                if (pnl >= 0) typeStats[pos.type].wins++;
-            }
-        });
-        const longGains = Math.max(0, typeStats.long.totalPnl);
-        const shortGains = Math.max(0, typeStats.short.totalPnl);
-        window.longShortPnlChartInstance = new Chart(longShortCtx, {
-            type: 'doughnut',
-            data: { labels: ['Profits générés par "Long"', 'Profits générés par "Short"'], datasets: [{ data: [longGains, shortGains], backgroundColor: ['rgba(75, 192, 192, 0.7)', 'rgba(255, 99, 132, 0.7)'], borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'], borderWidth: 1 }] },
-            options: { responsive: true, plugins: { legend: { display: false } } }
-        });
-        const longWinRate = typeStats.long.count > 0 ? (typeStats.long.wins / typeStats.long.count * 100) : 0;
-        const shortWinRate = typeStats.short.count > 0 ? (typeStats.short.wins / typeStats.short.count * 100) : 0;
-        longShortStatsDisplay.innerHTML = `<table class="table table-sm table-borderless small"><thead><tr><th>Type</th><th class="text-end">P/L Total</th><th class="text-end">Taux Gain</th><th class="text-end">Trades</th></tr></thead><tbody><tr><td><span class="badge" style="background-color: rgba(75, 192, 192, 0.7);">Long</span></td><td class="text-end" style="color:${typeStats.long.totalPnl >= 0 ? 'green' : 'red'}"><strong>${typeStats.long.totalPnl.toFixed(2)}</strong></td><td class="text-end">${longWinRate.toFixed(1)}%</td><td class="text-end">${typeStats.long.count}</td></tr><tr><td><span class="badge" style="background-color: rgba(255, 99, 132, 0.7);">Short</span></td><td class="text-end" style="color:${typeStats.short.totalPnl >= 0 ? 'green' : 'red'}"><strong>${typeStats.short.totalPnl.toFixed(2)}</strong></td><td class="text-end">${shortWinRate.toFixed(1)}%</td><td class="text-end">${typeStats.short.count}</td></tr></tbody></table>`;
-    }
-
-    // --- 6. GRAPHIQUE GAINS VS PERTES MOYENNES ---
-    const avgWinLossCtx = document.getElementById('avgWinLossChart');
-    const avgWinLossStatsDisplay = document.getElementById('avgWinLossStatsDisplay');
-    if (avgWinLossCtx && avgWinLossStatsDisplay) {
-        const gains = [];
-        const losses = [];
-        allClosedPositionsForStats.forEach(pos => {
-            const pnl = calculatePositionPnL(pos);
-            if (pnl > 0) gains.push(pnl);
-            else if (pnl < 0) losses.push(Math.abs(pnl));
-        });
-        const averageGain = gains.length > 0 ? gains.reduce((a, b) => a + b, 0) / gains.length : 0;
-        const averageLoss = losses.length > 0 ? losses.reduce((a, b) => a + b, 0) / losses.length : 0;
-        window.avgWinLossChartInstance = new Chart(avgWinLossCtx, {
-            type: 'bar',
-            data: { labels: ['Gain Moyen', 'Perte Moyenne'], datasets: [{ data: [averageGain, averageLoss], backgroundColor: ['rgba(75, 192, 192, 0.7)', 'rgba(255, 99, 132, 0.7)'], borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'], borderWidth: 1 }] },
-            options: { scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
-        });
-        const totalGains = gains.reduce((a, b) => a + b, 0);
-        const totalLosses = losses.reduce((a, b) => a + b, 0);
-        const profitFactor = totalLosses > 0 ? (totalGains / totalLosses) : Infinity;
-        const realizedRR = averageLoss > 0 ? (averageGain / averageLoss) : Infinity;
-        avgWinLossStatsDisplay.innerHTML = `<p class="mb-1">Ratio Risque/Rendement Réalisé : <strong style="font-size: 1.2em; color: ${realizedRR >= 1 ? 'green' : 'red'};">${realizedRR.toFixed(2)} : 1</strong></p><small class="text-muted">(Pour chaque 1 unité de risque, vous avez gagné ${realizedRR.toFixed(2)} unités en moyenne)</small><hr class="my-2"><p class="mb-1">Profit Factor : <strong style="font-size: 1.2em; color: ${profitFactor >= 1 ? 'green' : 'red'};">${profitFactor.toFixed(2)}</strong></p><small class="text-muted">(Total des Gains / Total des Pertes)</small>`;
-    }
-}
 
 // --- Logique de la Modale ---
 showNewPositionFormBtn.addEventListener('click', () => {
@@ -894,8 +743,7 @@ function calculatePositionMetrics(position) {
         totalQuantity += e.quantity; 
         totalCost += e.quantity * e.price; 
         totalEntryFees += e.fees || 0; // Ajoute les frais, ou 0 si le champ n'existe pas
-    });
-    
+    });    
     let totalExitQuantity = 0, totalExitValue = 0, totalExitFees = 0;
     if (position.exits) { 
         position.exits.forEach(ex => { 
@@ -903,10 +751,8 @@ function calculatePositionMetrics(position) {
             totalExitValue += ex.quantity * ex.price; 
             totalExitFees += ex.fees || 0; // Ajoute les frais, ou 0 si le champ n'existe pas
         }); 
-    }
-    
+    }    
     const totalFees = totalEntryFees + totalExitFees;
-
     return { 
         currentQuantity: totalQuantity - totalExitQuantity, 
         averageEntryPrice: totalCost / totalQuantity || 0, 
@@ -917,7 +763,6 @@ function calculatePositionMetrics(position) {
         totalFees // On retourne le total des frais
     };
 }
-
 function calculatePositionPnL(position) {
     const metrics = calculatePositionMetrics(position);
     let pnlBrut = 0;
@@ -936,44 +781,8 @@ function getClosingDate(position) {
     // Trouve la date la plus récente dans le tableau des sorties
     return position.exits.reduce((latest, exit) => exit.date > latest ? exit.date : latest, position.exits[0].date);
 }
-function updateYearNavigatorUI() {
-    // Affiche l'année sélectionnée
-    document.getElementById('pnl-current-year').textContent = selectedYear;
-    document.getElementById('activity-current-year').textContent = selectedYear;
-
-    // Trouve l'année du plus vieux et du plus récent trade
-    const years = [...new Set(allClosedPositionsForStats.map(p => getClosingDate(p)?.getFullYear()).filter(Boolean))];
-    const minYear = Math.min(...years);
-    const maxYear = Math.max(...years);
-
-    // Désactive les boutons si on est aux extrêmes
-    const isMin = selectedYear <= minYear;
-    const isMax = selectedYear >= maxYear;
-    document.getElementById('pnl-prev-year').disabled = isMin;
-    document.getElementById('activity-prev-year').disabled = isMin;
-    document.getElementById('pnl-next-year').disabled = isMax;
-    document.getElementById('activity-next-year').disabled = isMax;
-}
-function updateChartColors(theme) {
-    const isDark = theme === 'dark';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const textColor = isDark ? '#e0e0e0' : '#666';
-
-    // Mettre à jour les options globales de Chart.js
-    Chart.defaults.color = textColor;
-    Chart.defaults.borderColor = gridColor;
-
-    // Redessiner les graphiques pour appliquer les nouvelles couleurs
-    // (uniquement si la section des rapports est visible pour éviter les erreurs)
-    if (document.getElementById('reports-analytics').classList.contains('active') ||
-        document.getElementById('dashboard').classList.contains('active')) {
-        drawCharts();
-    }
-}
-
 // --- Initialisation ---
 // DANS app.js - REMPLACEZ L'ANCIEN LISTENER PAR CELUI-CI
-
 document.addEventListener('DOMContentLoaded', () => {
     
     // Gestion de la navigation principale entre les sections
@@ -985,7 +794,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-
     // Gestion des boutons de pagination pour l'historique
     nextPageBtn.addEventListener('click', async () => {
         if (!nextPageBtn.disabled) {
@@ -994,7 +802,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderClosedPositionsHistory();
         }
     });
-
     prevPageBtn.addEventListener('click', async () => {
         if (!prevPageBtn.disabled) {
             currentPage--;
@@ -1004,24 +811,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderClosedPositionsHistory();
         }
+    });       
+     initChartEventListeners(() => {
+        // Cette fonction sera appelée à chaque changement d'année
+        renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL);
     });
-
-    // Gestion des navigateurs d'année pour les graphiques
-    const yearNavigators = [
-        { prev: 'pnl-prev-year', next: 'pnl-next-year' },
-        { prev: 'activity-prev-year', next: 'activity-next-year' }
-    ];
-    yearNavigators.forEach(nav => {
-        document.getElementById(nav.prev).addEventListener('click', () => {
-            selectedYear--;
-            drawCharts();
-        });
-        document.getElementById(nav.next).addEventListener('click', () => {
-            selectedYear++;
-            drawCharts();
-        });
-    });
-
     // --- LOGIQUE DU MODE SOMBRE ---
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
     const body = document.body;
@@ -1036,8 +830,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (themeIcon) themeIcon.classList.replace('bi-moon-fill', 'bi-sun-fill');
         }
         updateChartColors(theme);
+        if (document.getElementById('dashboard').classList.contains('active') || document.getElementById('reports-analytics').classList.contains('active')) {
+        renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL);
+    }
     };
-
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
 
