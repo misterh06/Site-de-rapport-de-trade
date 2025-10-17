@@ -1,0 +1,65 @@
+# Fichier : .github/workflows/static.yml
+
+name: Deploy Vite site to Pages
+
+on:
+  # Se déclenche quand vous poussez du code sur la branche 'main' (ou 'master')
+  push:
+    branches: ["main"]
+
+  # Permet de lancer ce workflow manuellement depuis l'onglet Actions
+  workflow_dispatch:
+
+# Paramètres de permissions pour le déploiement
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Job de "construction"
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Récupère votre code depuis le dépôt
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Installe Node.js
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      # 3. Installe les dépendances (comme Vite)
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Construit le site (crée le dossier 'dist')
+      - name: Build
+        run: npm run build
+
+      # 5. Prépare le dossier 'dist' pour le déploiement
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+  # Job de "déploiement"
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
