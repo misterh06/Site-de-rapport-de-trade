@@ -10,14 +10,15 @@ import { renderCharts, updateChartColors, initChartEventListeners } from './char
 let openPositions = []; 
 let closedPositions = [];
 let allClosedPositionsForStats = [];
-let accountTransactions = []; // <-- LIGNE AJOUTÉE
+let accountTransactions = [];
 let currentUser = null;
 const POSITIONS_PER_PAGE = 20;
 let currentPage = 1;
 let totalPages = 1;
-let lastVisibleDoc = null; // Pour savoir où commencer la page suivante
-let firstVisibleDocs = [null]; // Pour savoir où commencer la page précédente
-
+let lastVisibleDoc = null;
+let firstVisibleDocs = [null];
+let strategies = [];
+let totalClosedPositionsCount = 0; 
 // --- Références aux éléments du DOM ---
 const mainSidebar = document.getElementById('main-sidebar');
 const mainContentArea = document.getElementById('main-content-area');
@@ -26,7 +27,30 @@ const navLinks = document.querySelectorAll('#main-sidebar .nav-link');
 const contentSections = document.querySelectorAll('.content-section');
 const userDisplay = document.getElementById('user-display');
 const logoutBtn = document.getElementById('logout-btn');
-
+const editPositionModal = new bootstrap.Modal(document.getElementById('editPositionModal'));
+const editPositionModalTitle = document.getElementById('editPositionModalTitle');
+const entriesList = document.getElementById('entries-list');
+const editEntryForm = document.getElementById('edit-entry-form');
+const editEntryFormTitle = document.getElementById('edit-entry-form-title');
+const editPositionIdInput = document.getElementById('editPositionId');
+const editEntryIndexInput = document.getElementById('editEntryIndex');
+const editEntryDateInput = document.getElementById('editEntryDate');
+const editEntryQuantityInput = document.getElementById('editEntryQuantity');
+const editEntryPriceInput = document.getElementById('editEntryPrice');
+const cancelEntryEditBtn = document.getElementById('cancel-entry-edit-btn');
+const editPositionStrategySelect = document.getElementById('editPositionStrategySelect');
+const paginationCountInfo = document.getElementById('pagination-count-info');
+// Stratégies
+const strategyModal = new bootstrap.Modal(document.getElementById('strategyModal'));
+const manageStrategiesBtn = document.getElementById('manage-strategies-btn');
+const strategyForm = document.getElementById('strategy-form');
+const strategyFormTitle = document.getElementById('strategy-form-title');
+const strategyIdInput = document.getElementById('strategyId');
+const strategyTitleInput = document.getElementById('strategyTitle');
+const strategyDetailsInput = document.getElementById('strategyDetails');
+const strategyList = document.getElementById('strategy-list');
+const cancelEditStrategyBtn = document.getElementById('cancel-edit-strategy-btn');
+const positionStrategySelect = document.getElementById('positionStrategy');
 // Auth
 const authSection = document.getElementById('auth-section');
 const loginForm = document.getElementById('login-form');
@@ -36,7 +60,6 @@ const loginEmailInput = document.getElementById('loginEmail');
 const loginPasswordInput = document.getElementById('loginPassword');
 const signupEmailInput = document.getElementById('signupEmail');
 const signupPasswordInput = document.getElementById('signupPassword');
-
 // Positions Ouvertes
 const openPositionsBody = document.getElementById('open-positions-body');
 const showNewPositionFormBtn = document.getElementById('show-new-position-form-btn');
@@ -49,7 +72,6 @@ const totalProfitLossSpan = document.getElementById('total-profit-loss');
 const winRateSpan = document.getElementById('win-rate');
 const totalTradesSpan = document.getElementById('total-trades');
 const lastTradesBody = document.getElementById('last-trades-body');
-
 // Modale
 const positionModal = new bootstrap.Modal(document.getElementById('positionModal'));
 const positionModalLabel = document.getElementById('positionModalLabel');
@@ -70,19 +92,16 @@ const notesGroup = document.getElementById('notes-group');
 // --- Fonctions d'Authentification ---
 function showAuthError(message) { authErrorMessage.textContent = message; authErrorMessage.classList.remove('d-none'); }
 function hideAuthError() { authErrorMessage.classList.add('d-none'); authErrorMessage.textContent = ''; }
-
 signupForm.addEventListener('submit', async (e) => {
     e.preventDefault(); hideAuthError();
     try { await createUserWithEmailAndPassword(auth, signupEmailInput.value, signupPasswordInput.value); signupForm.reset(); } 
     catch (error) { showAuthError(error.message); }
 });
-
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault(); hideAuthError();
     try { await signInWithEmailAndPassword(auth, loginEmailInput.value, loginPasswordInput.value); loginForm.reset(); } 
     catch (error) { showAuthError(error.message); }
 });
-
 logoutBtn.addEventListener('click', () => { signOut(auth); });
 
 // --- Gestion de l'état de l'utilisateur (onAuthStateChanged) ---
@@ -105,7 +124,8 @@ onAuthStateChanged(auth, async (user) => {
         await Promise.all([
             fetchStaticData(), // Charge les positions ouvertes et les transactions de compte
             fetchData(),
-            fetchAllClosedPositionsForStats()       // Charge la première page de l'historique des positions clôturées
+            fetchAllClosedPositionsForStats(), 
+            fetchStrategies()      // Charge la première page de l'historique des positions clôturées
         ]);
         
         // Une fois TOUTES les données chargées, on met à jour l'interface
@@ -127,9 +147,18 @@ onAuthStateChanged(auth, async (user) => {
         showSection('auth-section');
     }
 });
-// app.js
 
-// NOUVELLE FONCTION
+async function fetchStrategies() {
+    if (!currentUser) return;
+    try {
+        const q = query(collection(db, 'users', currentUser.uid, 'strategies'), orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        strategies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Erreur de chargement des stratégies:", error);
+    }
+}
+
 async function fetchStaticData() {
     if (!currentUser) return;
     try {
@@ -165,6 +194,7 @@ async function fetchData(direction = null) {
             if (direction === null) {
                 const countQuery = query(closedPositionsCol, where('status', '==', 'closed'));
                 const countSnapshot = await getDocs(countQuery);
+                totalClosedPositionsCount = countSnapshot.size;
                 totalPages = Math.ceil(countSnapshot.size / POSITIONS_PER_PAGE) || 1;
             }
         }
@@ -214,25 +244,165 @@ async function fetchAllClosedPositionsForStats() {
     }
 }
 
-// NOUVELLE FONCTION pour gérer les boutons
-function updatePaginationControls(currentSize) {
-    paginationInfo.textContent = `Page ${currentPage} sur ${totalPages}`;
-    
-    prevPageBtn.disabled = currentPage === 1;
-    // Le bouton "Suivant" est désactivé si on est sur la dernière page
-    // OU si la page actuelle n'est pas pleine (on sait qu'il n'y en a pas d'autre)
-    nextPageBtn.disabled = currentPage === totalPages || currentSize < POSITIONS_PER_PAGE;
+// --- GESTION DES STRATÉGIES ---
+
+function renderStrategies() {
+    strategyList.innerHTML = ''; // Vider la liste
+    if (strategies.length === 0) {
+        strategyList.innerHTML = '<p class="text-muted">Aucune stratégie enregistrée.</p>';
+        return;
+    }
+
+    strategies.forEach(strat => {
+        const stratItem = document.createElement('div');
+        // On utilise la classe 'list-group-item' qui est plus simple
+        stratItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+        
+        // --- ✨ HTML CORRIGÉ AVEC LES BOUTONS ---
+        stratItem.innerHTML = `
+            <div>
+                <h6 class="mb-0">${strat.title}</h6>
+                <small class="text-muted">${strat.details || 'Aucun détail'}</small>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-outline-primary me-2" onclick="editStrategy('${strat.id}')" title="Modifier">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteStrategy('${strat.id}')" title="Supprimer">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+        strategyList.appendChild(stratItem);
+    });
 }
 
+function populateStrategyDropdown() {
+    positionStrategySelect.innerHTML = '<option value="">Aucune stratégie</option>';
+    strategies.forEach(strat => {
+        const option = new Option(`${strat.title}`, strat.id);
+        positionStrategySelect.add(option);
+    });
+}
+
+manageStrategiesBtn.addEventListener('click', () => {
+    renderStrategies();
+    strategyModal.show();
+});
+
+strategyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = strategyIdInput.value;
+    const data = {
+        title: strategyTitleInput.value,
+        details: strategyDetailsInput.value,
+        createdAt: new Date()
+    };
+
+    try {
+        if (id) { // Mise à jour
+            const stratRef = doc(db, 'users', currentUser.uid, 'strategies', id);
+            await updateDoc(stratRef, data);
+        } else { // Création
+            await addDoc(collection(db, 'users', currentUser.uid, 'strategies'), data);
+        }
+        
+        strategyForm.reset();
+        strategyIdInput.value = '';
+        strategyFormTitle.textContent = 'Ajouter une nouvelle stratégie';
+        cancelEditStrategyBtn.style.display = 'none';
+
+        await fetchStrategies(); // Recharger les stratégies
+        renderStrategies(); // Mettre à jour la liste dans la modale
+        populateStrategyDropdown(); // Mettre à jour le menu déroulant partout
+    } catch (error) {
+        console.error("Erreur sauvegarde stratégie:", error);
+    }
+});
+
+window.editStrategy = (id) => {
+    const strat = strategies.find(s => s.id === id);
+    if (!strat) return;
+    
+    strategyIdInput.value = strat.id;
+    strategyTitleInput.value = strat.title;
+    strategyDetailsInput.value = strat.details;
+    strategyFormTitle.textContent = 'Modifier la stratégie';
+    cancelEditStrategyBtn.style.display = 'inline-block';
+};
+editPositionStrategySelect.addEventListener('change', async () => {
+    const positionId = editPositionIdInput.value;
+    const newStrategyId = editPositionStrategySelect.value;
+
+    if (!positionId) return;
+
+    try {
+        const posRef = doc(db, 'users', currentUser.uid, 'positions', positionId);
+        // Mettre à jour uniquement le champ strategyId
+        await updateDoc(posRef, { strategyId: newStrategyId });
+        
+        // Recharger les données pour que le tableau de l'historique soit à jour si on ferme la position
+        await fetchStaticData();
+        
+        // Mettre à jour l'affichage de l'historique (au cas où, bonne pratique)
+        renderClosedPositionsHistory(); 
+
+        Toastify({ text: "Stratégie mise à jour.", className: "info", style: { background: "green" } }).showToast();
+
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour de la stratégie :", error);
+        Toastify({ text: "Erreur de mise à jour.", className: "info", style: { background: "red" } }).showToast();
+    }
+});
+
+
+cancelEditStrategyBtn.addEventListener('click', () => {
+    strategyForm.reset();
+    strategyIdInput.value = '';
+    strategyFormTitle.textContent = 'Ajouter une nouvelle stratégie';
+    cancelEditStrategyBtn.style.display = 'none';
+});
+
+window.deleteStrategy = async (id) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette stratégie ?')) {
+        try {
+            await deleteDoc(doc(db, 'users', currentUser.uid, 'strategies', id));
+            await fetchStrategies();
+            renderStrategies();
+            populateStrategyDropdown();
+        } catch (error) {
+            console.error("Erreur suppression stratégie:", error);
+        }
+    }
+};
+
+function updatePaginationControls(currentSize) {
+    // Affichage du nombre de positions
+    if (totalClosedPositionsCount > 0) {
+        const startItem = (currentPage - 1) * POSITIONS_PER_PAGE + 1;
+        const endItem = Math.min(currentPage * POSITIONS_PER_PAGE, totalClosedPositionsCount);
+        paginationCountInfo.textContent = `Affichage de ${startItem} à ${endItem} sur ${totalClosedPositionsCount} positions.`;
+    } else {
+        paginationCountInfo.textContent = 'Aucune position.';
+    }
+
+    // Affichage du numéro de page
+    paginationInfo.textContent = `Page ${currentPage} sur ${totalPages}`;
+    
+    // Gestion de l'état des boutons
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages || currentSize < POSITIONS_PER_PAGE;
+} 
 async function updateAllViews() {
     // Logique pour les positions
     renderOpenPositions();
     renderClosedPositionsHistory();
     renderLastClosedPositions();
     updateDashboardStats();
-    renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL); 
+    renderCharts(allClosedPositionsForStats, strategies, getClosingDate, calculatePositionPnL); 
     updateAccountBalances();     
     renderAccountTransactions();
+    populateStrategyDropdown(); 
     updateDatalists(); 
 }
 
@@ -244,9 +414,13 @@ function showSection(sectionId) {
     if (activeSection) {
         activeSection.classList.add('active');
         
-        // DESSINER LES GRAPHIQUES UNIQUEMENT SI LA SECTION EST VISIBLE
+        // --- MODIFICATION ICI ---
+        // On redessine les graphiques APRES que la section soit devenue visible
         if (sectionId === 'dashboard' || sectionId === 'reports-analytics') {
-            renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL);
+            // On ajoute un délai de 50ms pour laisser le temps au navigateur de rendre la section
+            setTimeout(() => {
+                renderCharts(allClosedPositionsForStats, strategies, getClosingDate, calculatePositionPnL);
+            }, 50); // Un petit délai suffit
         }
     }
 
@@ -258,7 +432,7 @@ function showSection(sectionId) {
 
 function renderOpenPositions() {
     openPositionsBody.innerHTML = '';
-    if (openPositions.length === 0) { openPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center">Aucune position ouverte.</td></tr>'; return; }
+    if (openPositions.length === 0) { /* ... */ return; }
     openPositions.forEach(pos => {
         const metrics = calculatePositionMetrics(pos);
         const row = openPositionsBody.insertRow();
@@ -267,33 +441,159 @@ function renderOpenPositions() {
             <td>${pos.type === 'long' ? 'Achat' : 'Vente'}</td>
             <td>${metrics.currentQuantity}</td>
             <td>${metrics.averageEntryPrice.toFixed(4)} ${pos.currency}</td>
-    <td>${(metrics.currentQuantity * metrics.averageEntryPrice).toFixed(2)} ${pos.currency}</td>
+            <td>${(metrics.currentQuantity * metrics.averageEntryPrice).toFixed(2)} ${pos.currency}</td>
             <td>
-                <button class="btn btn-sm btn-success me-2" onclick="handleModifyPosition('${pos.id}', 'add')">Renforcer</button>
-                <button class="btn btn-sm btn-warning" onclick="handleModifyPosition('${pos.id}', 'close')">Clôturer</button>
+                <button class="btn btn-sm btn-success me-1" onclick="handleModifyPosition('${pos.id}', 'add')">Renforcer</button>
+                <button class="btn btn-sm btn-warning me-1" onclick="handleModifyPosition('${pos.id}', 'close')">Clôturer</button>
+                <button class="btn btn-sm btn-primary" onclick="handleEditPosition('${pos.id}')">Modifier</button> <!-- ✨ BOUTON AJOUTÉ -->
             </td>`;
     });
 }
+// --- LOGIQUE D'ÉDITION DE POSITION ---
+
+function showEditForm(show = true) {
+    editEntryForm.style.display = show ? 'block' : 'none';
+    editEntryFormTitle.style.display = show ? 'block' : 'none';
+}
+
+// Ouvre la modale et liste les entrées de la position
+window.handleEditPosition = (positionId) => {
+    const position = openPositions.find(p => p.id === positionId);
+    if (!position) return;
+
+    editPositionModalTitle.textContent = `Modifier la position : ${position.asset}`;
+    editPositionIdInput.value = positionId;
+    editPositionStrategySelect.innerHTML = '<option value="">Aucune stratégie</option>';
+    strategies.forEach(strat => {
+        const option = new Option(strat.title, strat.id);
+        editPositionStrategySelect.add(option);
+    });
+
+    // 2. Sélectionner la stratégie actuelle de la position
+    editPositionStrategySelect.value = position.strategyId || "";
+
+    entriesList.innerHTML = '';
+    position.entries.forEach((entry, index) => {
+        const entryItem = document.createElement('a');
+        entryItem.href = '#';
+        entryItem.className = 'list-group-item list-group-item-action';
+        entryItem.innerHTML = `
+            Date: <strong>${formatDate(entry.date)}</strong>, 
+            Quantité: <strong>${entry.quantity}</strong>, 
+            Prix: <strong>${entry.price.toFixed(4)}</strong>
+        `;
+        entryItem.onclick = (e) => {
+            e.preventDefault();
+            populateEntryForm(positionId, index);
+        };
+        entriesList.appendChild(entryItem);
+    });
+
+    showEditForm(false);
+    editPositionModal.show();
+};
+
+// Remplit le formulaire avec les données de l'entrée sélectionnée
+function populateEntryForm(positionId, index) {
+    const position = openPositions.find(p => p.id === positionId);
+    const entry = position.entries[index];
+
+    editEntryIndexInput.value = index;
+    editEntryDateInput.value = new Date(entry.date.getTime() - (entry.date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    editEntryQuantityInput.value = entry.quantity;
+    editEntryPriceInput.value = entry.price;
+    
+    showEditForm(true);
+}
+
+// Gère la soumission du formulaire d'édition
+editEntryForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const positionId = editPositionIdInput.value;
+    const entryIndex = parseInt(editEntryIndexInput.value, 10);
+    const position = openPositions.find(p => p.id === positionId);
+
+    if (!position || isNaN(entryIndex)) return;
+
+    // On récupère une copie du tableau des entrées
+    const updatedEntries = [...position.entries];
+    
+    // On met à jour l'entrée spécifique
+    updatedEntries[entryIndex] = {
+        ...updatedEntries[entryIndex], // conserve les anciennes propriétés comme les frais
+        date: new Date(editEntryDateInput.value),
+        quantity: parseFloat(editEntryQuantityInput.value),
+        price: parseFloat(editEntryPriceInput.value)
+    };
+
+    try {
+        const posRef = doc(db, 'users', currentUser.uid, 'positions', positionId);
+        // On écrase le tableau 'entries' dans Firestore avec notre version mise à jour
+        await updateDoc(posRef, { entries: updatedEntries });
+        
+        editPositionModal.hide();
+
+        // Recharger les données pour que tout soit à jour
+        await fetchStaticData();
+        updateAllViews();
+
+        Toastify({ text: "Position modifiée avec succès.", className: "info", style: { background: "green" } }).showToast();
+
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour de l'entrée :", error);
+        Toastify({ text: "Erreur lors de la modification.", className: "info", style: { background: "red" } }).showToast();
+    }
+});
+
+// Bouton pour annuler l'édition d'une entrée
+cancelEntryEditBtn.addEventListener('click', () => {
+    showEditForm(false);
+    editEntryForm.reset();
+});
 
 function renderClosedPositionsHistory() {
     allPositionsBody.innerHTML = '';
-    if (closedPositions.length === 0) { allPositionsBody.innerHTML = '<tr><td colspan="8" class="text-center">Aucune position clôturée.</td></tr>'; return; }
+    if (closedPositions.length === 0) { 
+        // Le colspan passe de 10 à 11
+        allPositionsBody.innerHTML = '<tr><td colspan="11" class="text-center">Aucune position clôturée.</td></tr>'; 
+        return; 
+    }
+
     closedPositions.forEach(pos => {
         const metrics = calculatePositionMetrics(pos);
         const pnl = calculatePositionPnL(pos);
+        
+        // Logique pour la stratégie (inchangée)
+        let strategyTitle = '-';
+        if (pos.strategyId) {
+            const foundStrategy = strategies.find(s => s.id === pos.strategyId);
+            strategyTitle = foundStrategy ? `<span class="badge bg-secondary">${foundStrategy.title}</span>` : `<span class="badge bg-light text-dark">Inconnue</span>`;
+        }
+
+        // Nombre de transactions d'entrée (inchangé)
+        const numberOfEntries = pos.entries ? pos.entries.length : 0;
+
+        // --- ✨ LOGIQUE AJOUTÉE POUR LA QUANTITÉ TOTALE ---
+        // On additionne la quantité de chaque entrée
+        const totalQuantity = pos.entries ? pos.entries.reduce((sum, entry) => sum + entry.quantity, 0) : 0;
+        // --- FIN DE LA LOGIQUE AJOUTÉE ---
+
         const row = allPositionsBody.insertRow();
         row.innerHTML = `
-    <td>${formatDate(pos.entries[0].date)}</td>
-    <td>${formatDate(getClosingDate(pos))}</td>
-    <td>${pos.asset}</td>
-    <td>${pos.type === 'long' ? 'Achat' : 'Vente'}</td>
-    <td>${metrics.averageEntryPrice.toFixed(4)}</td>
-    <td>${(metrics.totalExitValue / metrics.totalExitQuantity || 0).toFixed(4)}</td>
-    <td style="color: ${pnl >= 0 ? 'green' : 'red'};">${pnl.toFixed(2)} ${pos.currency}</td>
-    <td>
-        <button class="btn btn-sm btn-info me-2" onclick="viewPositionDetails('${pos.id}')">Détails</button>
-        <button class="btn btn-sm btn-danger" onclick="deletePosition('${pos.id}')">Supprimer</button>
-    </td>`;
+            <td>${formatDate(pos.entries[0].date)}</td>
+            <td>${formatDate(getClosingDate(pos))}</td>
+            <td>${pos.asset}</td>
+            <td>${pos.type === 'long' ? 'Achat' : 'Vente'}</td>
+            <td>${strategyTitle}</td>
+            <td class="text-center">${numberOfEntries}</td>
+            <td class="text-center">${totalQuantity.toLocaleString()}</td> <!-- ✨ NOUVELLE CELLULE -->
+            <td>${metrics.averageEntryPrice.toFixed(4)}</td>
+            <td>${(metrics.totalExitValue / metrics.totalExitQuantity || 0).toFixed(4)}</td>
+            <td style="color: ${pnl >= 0 ? 'green' : 'red'};">${pnl.toFixed(2)} ${pos.currency}</td>
+            <td>
+                <button class="btn btn-sm btn-info me-2" onclick="viewPositionDetails('${pos.id}')">Détails</button>
+                <button class="btn btn-sm btn-danger" onclick="deletePosition('${pos.id}')">Supprimer</button>
+            </td>`;
     });
 }
 function updateDashboardStats() {
@@ -476,6 +776,7 @@ savePositionBtn.addEventListener('click', async () => {
                 asset: document.getElementById('positionAsset').value.toUpperCase(),
                 type: document.getElementById('positionType').value,
                 currency: document.getElementById('positionCurrency').value.toUpperCase(),
+                strategyId: document.getElementById('positionStrategy').value,
                 status: 'open',
                 notes: document.getElementById('positionNotes').value,
                 createdAt: transaction.date,
@@ -814,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });       
      initChartEventListeners(() => {
         // Cette fonction sera appelée à chaque changement d'année
-        renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL);
+        renderCharts(allClosedPositionsForStats, strategies, getClosingDate, calculatePositionPnL);
     });
     // --- LOGIQUE DU MODE SOMBRE ---
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
@@ -831,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateChartColors(theme);
         if (document.getElementById('dashboard').classList.contains('active') || document.getElementById('reports-analytics').classList.contains('active')) {
-        renderCharts(allClosedPositionsForStats, getClosingDate, calculatePositionPnL);
+        renderCharts(allClosedPositionsForStats, strategies, getClosingDate, calculatePositionPnL);
     }
     };
     const savedTheme = localStorage.getItem('theme') || 'light';

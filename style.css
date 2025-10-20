@@ -5,3 +5,48 @@ body { background-color: #f8f9fa; }
 .content-section { display: none; padding: 20px; }
 .content-section.active { display: block; }
 #auth-section { max-width: 500px; margin: 50px auto; border: 1px solid #ddd; border-radius: 8px; background-color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 40px; }
+#performance-card .card-body {
+    height: 450px;}
+    /* ========================================================= */
+/*       Largeur des colonnes du tableau d'historique        */
+/* ========================================================= */
+
+/* Pour que le tableau utilise toute la largeur disponible */
+#trade-history .table {
+    table-layout: fixed; /* Force le respect des largeurs définies */
+    width: 100%;
+}
+
+/* Colonnes de date : on les veut compactes */
+#trade-history .col-date {
+    width: 12%;
+    white-space: nowrap; /* Empêche le texte de passer à la ligne */
+}
+
+/* Colonne Actif : peut prendre un peu plus de place */
+#trade-history .col-asset {
+    width: 10%;
+}
+
+/* Colonnes courtes et centrées */
+#trade-history .col-type,
+#trade-history .col-strategy,
+#trade-history .col-numeric {
+    width: 7%;
+}
+
+/* Colonnes pour les prix */
+#trade-history .col-price {
+    width: 9%;
+}
+
+/* Colonne P/L : assez importante */
+#trade-history .col-pnl {
+    width: 10%;
+    font-weight: bold;
+}
+
+/* Colonne Actions : on veut que les boutons rentrent bien */
+#trade-history .col-actions {
+    width: 15%;
+}

@@ -127,3 +127,35 @@ body.dark-mode h6,
 body.dark-mode strong {
     color: #fff;
 }
+/* Cible les éléments de la liste des transactions */
+body.dark-mode #entries-list .list-group-item {
+    background-color: #2a2a2a; /* Fond sombre pour chaque élément */
+    border-color: #444;       /* Bordure plus subtile */
+    color: #e0e0e0;           /* Couleur du texte principal */
+}
+
+/* Style au survol pour un meilleur feedback utilisateur */
+body.dark-mode #entries-list .list-group-item:hover {
+    background-color: #333;
+    color: #ffffff;
+}
+
+/* Assure que le texte en gras (<strong>) est bien visible */
+body.dark-mode #entries-list .list-group-item strong {
+    color: #ffffff; /* Texte blanc pur pour le rendre plus visible */
+}
+
+/* Style pour le titre du formulaire d'édition qui apparaît */
+body.dark-mode #edit-entry-form-title {
+    color: #ffffff;
+}
+/* Cible les éléments de la liste des stratégies */
+body.dark-mode #strategy-list .list-group-item {
+    background-color: #2a2a2a; /* Fond sombre */
+    border-color: #444;       /* Bordure assortie */
+}
+
+/* Style au survol pour un meilleur feedback */
+body.dark-mode #strategy-list .list-group-item:hover {
+    background-color: #333;
+}
