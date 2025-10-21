@@ -74,11 +74,27 @@
     <div class="row">
         <div class="col-xl-8">
             <div class="card shadow-sm mb-4" id="performance-card">
-                <div class="card-header">Courbe de Performance Cumulative</div>
-                <div class="card-body">
-                    <canvas id="performanceChart"></canvas>
-                </div>
+    <!-- ✨ REMPLACEZ LE CARD-HEADER PAR CELUI-CI ✨ -->
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Courbe de Performance Cumulative</span>
+        <div id="performance-chart-controls">
+            <div class="btn-group btn-group-sm me-2" role="group">
+                <button type="button" class="btn btn-outline-secondary" data-range="week">1S</button>
+                <button type="button" class="btn btn-outline-secondary" data-range="month">1M</button>
+                <button type="button" class="btn btn-outline-secondary" data-range="3month">3M</button>
+                <button type="button" class="btn btn-outline-secondary" data-range="year">1A</button>
+                <button type="button" class="btn btn-outline-secondary active" data-range="all">Tout</button>
             </div>
+            <button class="btn btn-outline-secondary btn-sm" id="reset-zoom-btn" title="Réinitialiser le zoom">
+                <i class="bi bi-arrows-angle-contract"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body"> <!-- Le card-body ne change pas -->
+        <canvas id="performanceChart"></canvas>
+    </div>
+</div>
+
         </div>
         <div class="col-xl-4">
             <div class="card shadow-sm mb-4">
@@ -521,11 +537,34 @@
     </div>
 </div>
 
+   <!-- ========================================================= -->
+    <!--          1. CHARGER LES LIBRAIRIES EXTERNES (OUTILS)      -->
+    <!-- ========================================================= -->
+    
+    <!-- Bootstrap (pour les modales, etc.) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Chart.js et ses plugins (L'ORDRE EST IMPORTANT ICI) -->
+    <!-- a) La librairie principale Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- b) L'adaptateur pour que Chart.js comprenne les dates -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- c) Le plugin de zoom et ses dépendances -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+    
+    <!-- Autres outils (Notifications) -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- ========================================================= -->
+    <!--          2. CHARGER VOTRE PROPRE CODE D'APPLICATION         -->
+    <!-- ========================================================= -->
+    
+    <!-- Votre code doit toujours être chargé en dernier -->
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="app.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </body>
 </html>

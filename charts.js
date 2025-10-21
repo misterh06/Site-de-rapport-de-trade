@@ -6,6 +6,8 @@ let performanceChartInstance, monthlyPnLChartInstance, winRateByAssetChartInstan
     monthlyActivityChartInstance, longShortPnlChartInstance, avgWinLossChartInstance,
     strategyPnlChartInstance, pnlVsSizeChartInstance;
 
+//Chart.register(chartZoom);
+
 /**
  * Fonction principale pour dessiner ou redessiner tous les graphiques.
  * Elle prend en paramètre toutes les données dont elle a besoin pour être indépendante.
@@ -31,35 +33,91 @@ export function renderCharts(allClosedPositionsForStats, strategies, getClosingD
     });
     updateYearNavigatorUI(allClosedPositionsForStats, getClosingDate);
 
-    // --- 1. GRAPHIQUE DE PERFORMANCE CUMULATIVE ---
-    const performanceCtx = document.getElementById('performanceChart');
-    if (performanceCtx) {
-        // ... (logique de données inchangée) ...
-        const positionsWithClosingDate = allClosedPositionsForStats.map(p => ({ ...p, closingDate: getClosingDate(p) })).filter(p => p.closingDate instanceof Date).sort((a, b) => a.closingDate - b.closingDate);
-        const labels = positionsWithClosingDate.map(p => p.closingDate.toLocaleDateString('fr-FR'));
-        const allCurrencies = [...new Set(positionsWithClosingDate.map(p => p.currency))];
-        const dataByCurrency = {};
-        allCurrencies.forEach(c => dataByCurrency[c] = []);
-        const cumulativePnLByCurrency = {};
-        allCurrencies.forEach(c => cumulativePnLByCurrency[c] = 0);
-        positionsWithClosingDate.forEach(pos => {
-            cumulativePnLByCurrency[pos.currency] += calculatePositionPnL(pos);
-            allCurrencies.forEach(currency => { dataByCurrency[currency].push(cumulativePnLByCurrency[currency]); });
-        });
-        const colors = ['rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgb(255, 205, 86)'];
-        const datasets = allCurrencies.map((currency, index) => ({ label: `Performance Cumulative (${currency})`, data: dataByCurrency[currency], borderColor: colors[index % colors.length], tension: 0.1, fill: false }));
-        
-        performanceChartInstance = new Chart(performanceCtx, {
-            type: 'line',
-            data: { labels, datasets },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false, // <-- CORRIGÉ
-                plugins: { legend: { position: 'top' } }
-            }
-        });
-    }
+   // --- 1. GRAPHIQUE DE PERFORMANCE CUMULATIVE (INTERACTIF) ---
+const performanceCtx = document.getElementById('performanceChart');
+if (performanceCtx) {
+    
+    // --- ÉTAPE 1 : Préparation des données ---
 
+    // Trier tous les trades par date de clôture
+    const sortedPositions = allClosedPositionsForStats
+        .map(p => ({ ...p, closingDate: getClosingDate(p) }))
+        .filter(p => p.closingDate instanceof Date)
+        .sort((a, b) => a.closingDate - b.closingDate);
+
+    // Calculer le P/L cumulé à la fin de chaque jour unique
+    const dailyCumulativePnl = {};
+    let cumulativePnl = 0;
+    sortedPositions.forEach(pos => {
+        cumulativePnl += calculatePositionPnL(pos);
+        const dayKey = pos.closingDate.toISOString().split('T')[0]; // "2024-07-16"
+        dailyCumulativePnl[dayKey] = cumulativePnl;
+    });
+
+    // Préparer les données finales au format {x, y} pour Chart.js
+    const chartData = Object.keys(dailyCumulativePnl)
+        .sort()
+        .map(dayKey => ({
+            x: new Date(dayKey).getTime(), // Axe X : Timestamp (nombre)
+            y: dailyCumulativePnl[dayKey]  // Axe Y : P/L cumulé
+        }));
+
+    // --- ÉTAPE 2 : Création du graphique ---
+
+    performanceChartInstance = new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: `Performance Cumulative`,
+                data: chartData,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1,
+                fill: true,
+                pointRadius: chartData.length < 100 ? 3 : 0, // Affiche les points seulement s'il y a peu de données
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time', // Axe temporel
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'dd MMM yyyy',
+                        displayFormats: {
+                            day: 'dd MMM',
+                            week: 'dd MMM yy',
+                            month: 'MMM yyyy',
+                        }
+                    },
+                    ticks: { autoSkip: true, maxTicksLimit: 15 }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'P/L Cumulé'
+                    }
+                }
+            },
+            plugins: { 
+                legend: { display: false },
+                title: { display: false },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+                }
+            }
+        }
+    });
+
+    // --- ÉTAPE 3 : Connexion des boutons d'interactivité ---
+
+    // ✅ CORRECTION : On crée les "labels" textuels ici et on les passe à la fonction
+    const textLabelsForButtons = Object.keys(dailyCumulativePnl).sort();
+    setupPerformanceChartInteractivity(performanceChartInstance, textLabelsForButtons);
+}
     // --- 2. GRAPHIQUE P&L MENSUEL ---
     const monthlyPnLCtx = document.getElementById('monthlyPnLChart');
     if (monthlyPnLCtx) {
@@ -332,4 +390,46 @@ function updateYearNavigatorUI(allClosedPositionsForStats, getClosingDate) {
     document.getElementById('activity-prev-year').disabled = isMin;
     document.getElementById('pnl-next-year').disabled = isMax;
     document.getElementById('activity-next-year').disabled = isMax;
+}
+function setupPerformanceChartInteractivity(chart, allLabels) {
+    const controls = document.getElementById('performance-chart-controls');
+    if (!controls || allLabels.length === 0) return;
+
+    const rangeButtons = controls.querySelectorAll('.btn-group button');
+    const resetBtn = controls.querySelector('#reset-zoom-btn');
+
+    const lastDate = new Date(allLabels[allLabels.length - 1]);
+
+    rangeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Gérer le style du bouton actif
+            rangeButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            const range = button.dataset.range;
+            let startDate = new Date(allLabels[0]);
+
+            if (range === 'week') {
+                startDate = new Date(lastDate);
+                startDate.setDate(lastDate.getDate() - 7);
+            } else if (range === 'month') {
+                startDate = new Date(lastDate);
+                startDate.setMonth(lastDate.getMonth() - 1);
+            } else if (range === '3month') {
+                startDate = new Date(lastDate);
+                startDate.setMonth(lastDate.getMonth() - 3);
+            } else if (range === 'year') {
+                startDate = new Date(lastDate);
+                startDate.setFullYear(lastDate.getFullYear() - 1);
+            }
+            
+            chart.zoomScale('x', { min: startDate.getTime(), max: lastDate.getTime() }, 'default');
+        });
+    });
+
+    resetBtn.addEventListener('click', () => {
+        chart.resetZoom('default');
+        rangeButtons.forEach(btn => btn.classList.remove('active'));
+        controls.querySelector('button[data-range="all"]').classList.add('active');
+    });
 }
