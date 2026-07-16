@@ -1,0 +1,329 @@
+/* pea.css - Design "Zen & Patrimoine" */
+
+:root {
+    --bg-dark-deep: #0f172a;
+    /* Bleu Nuit Profond */
+    --bg-dark-light: #1e293b;
+    --gold-primary: #d4af37;
+    --gold-hover: #b4942b;
+    --green-wealth: #10b981;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+body.light-mode {
+    --bg-dark-deep: #f1f5f9;
+    --bg-dark-light: #ffffff;
+    --text-primary: #0f172a;
+    --text-muted: #475569;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+body {
+    background-color: var(--bg-dark-deep);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(16, 185, 129, 0.08), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(212, 175, 55, 0.05), transparent 25%);
+    min-height: 100vh;
+}
+
+body.light-mode .text-white {
+    color: var(--text-primary) !important;
+}
+body.light-mode .text-white-50 {
+    color: var(--text-muted) !important;
+}
+body.light-mode .btn-outline-light {
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+body.light-mode .btn-outline-light:hover {
+    background-color: var(--text-muted);
+    color: #ffffff;
+}
+body.light-mode .table-dark {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+    --bs-table-border-color: var(--glass-border);
+    --bs-table-hover-color: var(--text-primary);
+    --bs-table-hover-bg: rgba(0, 0, 0, 0.04);
+    --bs-table-striped-color: var(--text-primary);
+    color: var(--text-primary);
+}
+body.light-mode .table-dark th {
+    color: var(--text-muted);
+}
+body.light-mode .bg-dark {
+    background-color: #ffffff !important;
+    color: var(--text-primary) !important;
+    border-color: var(--glass-border) !important;
+}
+body.light-mode .form-control, body.light-mode .form-select {
+    color: var(--text-primary) !important;
+}
+body.light-mode .form-control:focus, body.light-mode .form-select:focus {
+    background-color: #f8fafc !important;
+    color: var(--text-primary) !important;
+}
+body.light-mode .text-warning-emphasis {
+    color: #b4942b !important;
+}
+
+/* Sidebar Customisation */
+#pea-sidebar {
+    background: var(--glass-bg);
+    border-right: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+}
+
+.nav-link {
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 0.8rem 1rem;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.nav-link:hover {
+    color: var(--gold-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.nav-link.active {
+    color: var(--gold-primary);
+    background: rgba(212, 175, 55, 0.1);
+}
+
+/* Glass Panels */
+.glass-panel {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-panel:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.table-condensed th,
+.table-condensed td {
+    padding: 0.32rem 0.45rem;
+    line-height: 1.2;
+    font-size: 0.86rem;
+}
+
+.table-condensed thead th {
+    font-size: 0.8rem;
+    padding-top: 0.36rem;
+    padding-bottom: 0.36rem;
+}
+
+.table-condensed tbody td {
+    font-size: 0.86rem;
+    padding-top: 0.32rem;
+    padding-bottom: 0.32rem;
+}
+
+.table-condensed tbody tr {
+    line-height: 1.2;
+}
+
+/* KPI Cards */
+.kpi-card {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: white;
+    margin-right: 1.2rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.kpi-content {
+    flex-grow: 1;
+}
+
+.kpi-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.2rem;
+}
+
+.kpi-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+/* Gradients for Icons */
+.bg-gradient-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.bg-gradient-purple {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* Gold tone */
+.bg-gradient-info {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+/* Buttons Custom */
+.btn-gold {
+    background-color: var(--gold-primary);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-gold:hover {
+    background-color: var(--gold-hover);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+}
+
+/* Table Customization */
+.table-dark {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.02);
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-dark th {
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    font-weight: 600;
+    padding-bottom: 1rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.table-dark td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    padding: 1rem 0.5rem;
+    vertical-align: middle;
+}
+
+.table-dark tr:last-child td {
+    border-bottom: none;
+}
+
+.table-dark tfoot td {
+    border-top: 2px solid var(--glass-border);
+    border-bottom: none;
+    background-color: rgba(255, 255, 255, 0.03);
+    vertical-align: middle;
+    padding: 1rem 0.5rem;
+}
+
+body.light-mode .table-dark tfoot td {
+    border-top: 2px solid var(--glass-border);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.symbol-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: white;
+}
+
+/* Modal Glass */
+.glass-modal {
+    background: rgba(255, 255, 255, 0.96);
+    color: #0f172a;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+
+body.light-mode .glass-modal,
+.glass-modal {
+    color: #0f172a;
+}
+
+body.light-mode .glass-modal .text-white,
+body.light-mode .glass-modal .text-muted,
+body.light-mode .glass-modal .form-label,
+body.light-mode .glass-modal .modal-title,
+body.light-mode .glass-modal .btn-close-white {
+    color: #0f172a !important;
+}
+
+body.light-mode .glass-modal .form-control,
+body.light-mode .glass-modal .form-select {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: rgba(30, 41, 59, 1);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25);
+    color: white;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-dark-deep);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}

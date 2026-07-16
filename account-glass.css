@@ -1,0 +1,780 @@
+/* ========================================================= */
+/*     Effet Glassmorphism pour la Gestion du Compte        */
+/* ========================================================= */
+
+/* Inputs et selects dans les cartes colorées - avec !important pour écraser les styles inline */
+#account-management .form-control,
+#account-management .form-select {
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.8) !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.3s ease !important;
+}
+
+#account-management .form-control::placeholder {
+    color: rgba(0, 0, 0, 0.4) !important;
+}
+
+#account-management .form-control:focus,
+#account-management .form-select:focus {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-color: rgba(100, 100, 255, 0.5) !important;
+    box-shadow: 0 0 0 0.25rem rgba(100, 100, 255, 0.1), 0 6px 12px rgba(0, 0, 0, 0.12) !important;
+    color: #333 !important;
+    transform: translateY(-1px);
+}
+
+/* Style spécial pour le select pour que le texte soit visible */
+#account-management .form-select option {
+    background: #fff !important;
+    color: #333 !important;
+}
+
+/* Le bouton d'envoi avec effet glass mais adapté */
+#account-management .btn-light {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+    color: #333 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+#account-management .btn-light:hover {
+    background: rgba(255, 255, 255, 0.85) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ========================================================= */
+/*              TABLEAUX GLASSMORPHISM                       */
+/* ========================================================= */
+
+/* Force glassmorphism sur TOUS les tableaux */
+#account-management .table,
+#account-management table {
+    color: #333 !important;
+    background: transparent !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+}
+
+#account-management .table thead,
+#account-management table thead {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+#account-management .table thead th,
+#account-management table thead th {
+    background: transparent !important;
+    color: #333 !important;
+    font-weight: 600 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+#account-management .table thead th:first-child,
+#account-management table thead th:first-child {
+    border-top-left-radius: 12px !important;
+}
+
+#account-management .table thead th:last-child,
+#account-management table thead th:last-child {
+    border-top-right-radius: 12px !important;
+}
+
+#account-management .table tbody,
+#account-management table tbody {
+    background: transparent !important;
+}
+
+#account-management .table td,
+#account-management .table th,
+#account-management table td,
+#account-management table th {
+    background: transparent !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    color: #333 !important;
+}
+
+#account-management .table tbody tr,
+#account-management table tbody tr {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+}
+
+#account-management .table tbody tr:hover,
+#account-management table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.65) !important;
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
+
+#account-management .table tbody tr:last-child td:first-child,
+#account-management table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px !important;
+}
+
+#account-management .table tbody tr:last-child td:last-child,
+#account-management table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px !important;
+}
+
+/* Les petites cartes dans le formulaire de conversion */
+#account-management #conversion-group .card {
+    background: rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+#account-management #conversion-group .alert-light {
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    color: #333 !important;
+}
+
+/* Textes dans les sous-cartes */
+#account-management #conversion-group h6,
+#account-management #conversion-group label {
+    color: #333 !important;
+}
+
+/* Mode sombre - garder les valeurs plus sombres */
+body.dark-mode #account-management .form-control,
+body.dark-mode #account-management .form-select {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+}
+
+body.dark-mode #account-management .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ========================================================= */
+/*     Effet Glassmorphism pour la Gestion du Compte        */
+/* ========================================================= */
+
+/* Inputs et selects dans les cartes colorées - avec !important pour écraser les styles inline */
+#account-management .form-control,
+#account-management .form-select {
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.8) !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.3s ease !important;
+}
+
+#account-management .form-control::placeholder {
+    color: rgba(0, 0, 0, 0.4) !important;
+}
+
+#account-management .form-control:focus,
+#account-management .form-select:focus {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-color: rgba(100, 100, 255, 0.5) !important;
+    box-shadow: 0 0 0 0.25rem rgba(100, 100, 255, 0.1), 0 6px 12px rgba(0, 0, 0, 0.12) !important;
+    color: #333 !important;
+    transform: translateY(-1px);
+}
+
+/* Style spécial pour le select pour que le texte soit visible */
+#account-management .form-select option {
+    background: #fff !important;
+    color: #333 !important;
+}
+
+/* Le bouton d'envoi avec effet glass mais adapté */
+#account-management .btn-light {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+    color: #333 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+#account-management .btn-light:hover {
+    background: rgba(255, 255, 255, 0.85) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ========================================================= */
+/*              TABLEAUX GLASSMORPHISM                       */
+/* ========================================================= */
+
+/* Force glassmorphism sur TOUS les tableaux */
+#account-management .table,
+#account-management table {
+    color: #333 !important;
+    background: transparent !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+}
+
+#account-management .table thead,
+#account-management table thead {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+#account-management .table thead th,
+#account-management table thead th {
+    background: transparent !important;
+    color: #333 !important;
+    font-weight: 600 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+#account-management .table thead th:first-child,
+#account-management table thead th:first-child {
+    border-top-left-radius: 12px !important;
+}
+
+#account-management .table thead th:last-child,
+#account-management table thead th:last-child {
+    border-top-right-radius: 12px !important;
+}
+
+#account-management .table tbody,
+#account-management table tbody {
+    background: transparent !important;
+}
+
+#account-management .table td,
+#account-management .table th,
+#account-management table td,
+#account-management table th {
+    background: transparent !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    color: #333 !important;
+}
+
+#account-management .table tbody tr,
+#account-management table tbody tr {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+}
+
+#account-management .table tbody tr:hover,
+#account-management table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.65) !important;
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
+
+#account-management .table tbody tr:last-child td:first-child,
+#account-management table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px !important;
+}
+
+#account-management .table tbody tr:last-child td:last-child,
+#account-management table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px !important;
+}
+
+/* Les petites cartes dans le formulaire de conversion */
+#account-management #conversion-group .card {
+    background: rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+#account-management #conversion-group .alert-light {
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    color: #333 !important;
+}
+
+/* Textes dans les sous-cartes */
+#account-management #conversion-group h6,
+#account-management #conversion-group label {
+    color: #333 !important;
+}
+
+/* Mode sombre - garder les valeurs plus sombres */
+body.dark-mode #account-management .form-control,
+body.dark-mode #account-management .form-select {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+}
+
+body.dark-mode #account-management .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+body.dark-mode #account-management .table,
+body.dark-mode #account-management table {
+    color: #fff !important;
+}
+
+body.dark-mode #account-management .table tbody tr,
+body.dark-mode #account-management table tbody tr {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ========================================================= */
+/*     Effet Glassmorphism pour Rapports & Statistiques     */
+/* ========================================================= */
+
+#reports-analytics .card {
+    border: none !important;
+    border-radius: 15px !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#reports-analytics .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2) !important;
+}
+
+/* ========================================================= */
+/*     Effet Glassmorphism PREMIUM (Dark & Gold)            */
+/* ========================================================= */
+
+/* Inputs et selects - Style plus sombre et raffiné */
+#account-management .form-control,
+#account-management .form-select {
+    background: rgba(255, 255, 255, 0.05) !important;
+    /* Plus sombre */
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    /* Bordure un peu plus visible */
+    color: #ffffff !important;
+    /* BLANC PUR pour le texte saisi */
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    transition: all 0.3s ease !important;
+}
+
+body.light-mode #account-management .form-control,
+body.light-mode #account-management .form-select {
+    background: rgba(255, 255, 255, 0.8) !important;
+    color: #333 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+#account-management .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+    /* Gris clair pour placeholder */
+}
+
+/* Focus : Accent Gold au lieu de Bleu */
+#account-management .form-control:focus,
+#account-management .form-select:focus {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: #d4af37 !important;
+    /* GOLD */
+    box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25) !important;
+    /* Ombre Gold */
+    color: #fff !important;
+}
+
+/* Cartes (Cards) : Fond sombre glassmorphism */
+#account-management .card {
+    background: rgba(20, 25, 40, 0.85) !important;
+    /* Fond encore plus sombre pour contraste */
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    color: #f0f0f0 !important;
+    /* Texte général BLANC CASSÉ */
+}
+
+body.light-mode #account-management .card {
+    background: rgba(255, 255, 255, 0.6) !important;
+    color: #333 !important;
+    border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Libellés (Labels) */
+#account-management label,
+#account-management h6,
+#account-management .form-label {
+    color: #e0e0e0 !important;
+    /* Gris très clair pour les titres */
+}
+
+/* --- FORÇAGE DES COULEURS DES TITRES (HEADER) --- */
+/* On cible très précisément pour écraser le dark-mode global */
+#account-management .card .card-header,
+body.dark-mode #account-management .card .card-header {
+    background: rgba(255, 171, 171, 0.651) !important;
+    /* Fond plus sombre */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #d46937 !important;
+    /* GOLD FLUO - Forcé */
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8) !important;
+    /* Ombre pour lisibilité max */
+}
+
+/* --- FORÇAGE DES EN-TÊTES DE TABLEAU --- */
+#account-management .table thead,
+#account-management .table thead th,
+body.dark-mode #account-management .table thead th {
+    background-color: rgba(30, 30, 30, 0.9) !important;
+    /* Fond GRIS FONCÉ presque noir */
+    color: #d4af37 !important;
+    /* Texte GOLD */
+    border-bottom: 1px solid #d4af37 !important;
+    /* Ligne Gold dessous */
+    font-weight: bold !important;
+}
+
+/* --- FORÇAGE DU TEXTE DU TABLEAU --- */
+#account-management .table tbody td,
+body.dark-mode #account-management .table tbody td {
+    color: #eeeeee !important;
+    /* Texte BLANC */
+}
+
+/* Texte spécifique 'Conversion' souvent en gris */
+#account-management .text-muted,
+body.dark-mode #account-management .text-muted {
+    color: #aaaaaa !important;
+    /* Gris clair lisible, pas gris foncé */
+}
+
+/* Boutons : Style Gold */
+#account-management .btn-primary,
+#account-management .btn-success {
+    background: linear-gradient(135deg, #d47037 0%, #aa8a2e 100%) !important;
+    border: none !important;
+    color: #363636 !important;
+    font-weight: bold !important;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3) !important;
+}
+
+#account-management .btn-primary:hover,
+#account-management .btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5) !important;
+}
+
+/* Tableaux : Style unifié */
+#account-management .table {
+    --bs-table-bg: transparent !important;
+    --bs-table-color: #eee !important;
+}
+
+#account-management .table tbody tr {
+    background: rgba(255, 255, 255, 0.02) !important;
+    transition: background 0.2s;
+}
+
+#account-management .table tbody tr:hover {
+    background: rgba(212, 175, 55, 0.1) !important;
+    /* Hover doré subtil */
+}
+
+#account-management .table td {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f8f9fa !important;
+    /* Blanc quasi pur pour les données du tableau */
+}
+
+#reports-analytics .card-header {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 15px 15px 0 0 !important;
+    font-weight: bold;
+    color: #333 !important;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+#reports-analytics .card-body {
+    background: transparent !important;
+}
+
+/* Boutons de navigation dans les headers de cartes */
+#reports-analytics .btn-outline-secondary {
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #444;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+#reports-analytics .btn-outline-secondary:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: #000;
+}
+
+/* Mode sombre pour Rapports */
+body.dark-mode #reports-analytics .card-header {
+    color: #fff !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode #reports-analytics .btn-outline-secondary {}
+
+/* Style spécial pour le select pour que le texte soit visible */
+#account-management .form-select option {
+    background: #fff !important;
+    color: #333 !important;
+}
+
+/* Le bouton d'envoi avec effet glass mais adapté */
+#account-management .btn-light {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+    color: #333 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+#account-management .btn-light:hover {
+    background: rgba(255, 255, 255, 0.85) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ========================================================= */
+/*              TABLEAUX GLASSMORPHISM                       */
+/* ========================================================= */
+
+/* Force glassmorphism sur TOUS les tableaux */
+#account-management .table,
+#account-management table {
+    color: #333 !important;
+    background: transparent !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+}
+
+#account-management .table thead,
+#account-management table thead {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+#account-management .table thead th,
+#account-management table thead th {
+    background: transparent !important;
+    color: #333 !important;
+    font-weight: 600 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+#account-management .table thead th:first-child,
+#account-management table thead th:first-child {
+    border-top-left-radius: 12px !important;
+}
+
+#account-management .table thead th:last-child,
+#account-management table thead th:last-child {
+    border-top-right-radius: 12px !important;
+}
+
+#account-management .table tbody,
+#account-management table tbody {
+    background: transparent !important;
+}
+
+#account-management .table td,
+#account-management .table th,
+#account-management table td,
+#account-management table th {
+    background: transparent !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    color: #333 !important;
+}
+
+#account-management .table tbody tr,
+#account-management table tbody tr {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+}
+
+#account-management .table tbody tr:hover,
+#account-management table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.65) !important;
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
+
+#account-management .table tbody tr:last-child td:first-child,
+#account-management table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px !important;
+}
+
+#account-management .table tbody tr:last-child td:last-child,
+#account-management table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px !important;
+}
+
+/* Les petites cartes dans le formulaire de conversion */
+#account-management #conversion-group .card {
+    background: rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+#account-management #conversion-group .alert-light {
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    color: #333 !important;
+}
+
+/* Textes dans les sous-cartes */
+#account-management #conversion-group h6,
+#account-management #conversion-group label {
+    color: #333 !important;
+}
+
+/* Mode sombre - garder les valeurs plus sombres */
+body.dark-mode #account-management .form-control,
+body.dark-mode #account-management .form-select {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+}
+
+body.dark-mode #account-management .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+body.dark-mode #account-management .table,
+body.dark-mode #account-management table {
+    color: #fff !important;
+}
+
+body.dark-mode #account-management .table tbody tr,
+body.dark-mode #account-management table tbody tr {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ========================================================= */
+/*     Effet Glassmorphism pour Rapports & Statistiques     */
+/* ========================================================= */
+
+#reports-analytics .card {
+    border: none !important;
+    border-radius: 15px !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#reports-analytics .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2) !important;
+}
+
+#reports-analytics .card-header {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 15px 15px 0 0 !important;
+    font-weight: bold;
+    color: #333 !important;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+#reports-analytics .card-body {
+    background: transparent !important;
+}
+
+/* Boutons de navigation dans les headers de cartes */
+#reports-analytics .btn-outline-secondary {
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #444;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+#reports-analytics .btn-outline-secondary:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: #000;
+}
+
+/* Mode sombre pour Rapports */
+body.dark-mode #reports-analytics .card-header {
+    color: #fff !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode #reports-analytics .btn-outline-secondary {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #eee;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode #reports-analytics .btn-outline-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+/* Correction pour les tableaux générés dynamiquement dans les rapports */
+#reports-analytics .table,
+#reports-analytics table {
+    background: transparent !important;
+    margin-bottom: 0 !important;
+}
+
+#reports-analytics .table td,
+#reports-analytics .table th {
+    background: transparent !important;
+    color: #333 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+#reports-analytics .table thead th {
+    border-bottom: 2px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+#reports-analytics .table tbody tr {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+    transition: background 0.3s ease;
+}
+
+#reports-analytics .table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Mode sombre pour les tableaux de rapports */
+body.dark-mode #reports-analytics .table td,
+body.dark-mode #reports-analytics .table th {
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-mode #reports-analytics .table tbody tr {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+body.dark-mode #reports-analytics .table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+}

@@ -1,0 +1,205 @@
+/* ========================================================= */
+/*               dark-mode.css - VERSION FINALE              */
+/* ========================================================= */
+
+/* Styles de base pour le mode sombre */
+body.dark-mode {
+    background-color: #121212 !important;
+    color: #e0e0e0;
+}
+
+/* Barre latérale */
+body.dark-mode .sidebar {
+    background-color: #1e1e1e !important;
+    border-right: 1px solid #333;
+}
+
+body.dark-mode .sidebar a:hover,
+body.dark-mode .sidebar a.active {
+    background-color: #333 !important;
+}
+
+/* Conteneurs principaux : Cartes, Modales, Section Auth */
+body.dark-mode .card,
+body.dark-mode .modal-content,
+body.dark-mode #auth-section {
+    background-color: #1e1e1e !important;
+    border: 1px solid #333;
+    color: #e0e0e0;
+}
+
+body.dark-mode .card-header,
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+    background-color: #252526 !important;
+    border-bottom: 1px solid #333;
+}
+
+body.dark-mode .border-bottom {
+    border-bottom: 1px solid #333 !important;
+}
+
+/* ========================================================= */
+/*          SECTION TABLEAUX (NETTOYÉE ET CORRIGÉE)          */
+/* ========================================================= */
+
+body.dark-mode .table {
+    --bs-table-bg: transparent;
+    --bs-table-border-color: #333;
+}
+
+/* Règle pour les en-têtes (<th>) - Spécifique pour écraser style.css */
+body.dark-mode #trade-history thead th,
+body.dark-mode .table th {
+    background-color: #252526 !important;
+    /* Fond sombre */
+    color: #ffffff !important;
+    font-weight: 600;
+    border-bottom-color: #444;
+}
+
+/* Règle de base pour TOUTES les cellules de données (<td>) */
+body.dark-mode .table td {
+    color: #e0e0e0 !important;
+}
+
+/* Fond pour les lignes rayées */
+body.dark-mode .table-striped>tbody>tr:nth-of-type(odd)>* {
+    --bs-table-accent-bg: rgba(255, 255, 255, 0.05);
+}
+
+/* Effet de survol */
+body.dark-mode .table-hover>tbody>tr:hover>* {
+    --bs-table-accent-bg: rgba(255, 255, 255, 0.075);
+    color: #ffffff !important;
+}
+
+/* ========================================================= */
+/*       CORRECTIONS P&L ET TEXTES SPÉCIFIQUES (TRÈS IMPORTANT)      */
+/* ========================================================= */
+
+/* Règle pour les P&L positifs (vert #198754) */
+body.dark-mode .table td[style*="198754"],
+body.dark-mode div[style*="198754"],
+body.dark-mode .text-success {
+    color: #2ecc71 !important;
+    /* Vert clair plus lisible sur fond sombre */
+    font-weight: bold;
+}
+
+/* Règle pour les P&L négatifs (rouge #dc3545) */
+body.dark-mode .table td[style*="dc3545"],
+body.dark-mode div[style*="dc3545"],
+body.dark-mode .text-danger {
+    color: #ff6b6b !important;
+    /* Rouge clair plus lisible sur fond sombre */
+    font-weight: bold;
+}
+
+/* Règle pour les textes secondaires (gris clair) */
+body.dark-mode .text-muted,
+body.dark-mode .form-text,
+body.dark-mode small {
+    color: #a0a0a0 !important;
+}
+
+/* ========================================================= */
+/*                     FORMULAIRES ET AUTRES                 */
+/* ========================================================= */
+
+/* Formulaires */
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    border: 1px solid #444;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    border-color: #0d6efd;
+    box-shadow: none;
+}
+
+/* Boutons */
+body.dark-mode .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+body.dark-mode .btn-outline-secondary:disabled {
+    color: #6c757d;
+    border-color: #333;
+}
+
+body.dark-mode .badge {
+    color: #ffffff !important;
+}
+
+/* Textes et Titres */
+body.dark-mode .card-header,
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6,
+body.dark-mode strong {
+    color: #fff;
+}
+
+body.dark-mode #account-management,
+body.dark-mode #account-management .card,
+body.dark-mode #account-management .alert-light,
+body.dark-mode #account-management .text-dark,
+body.dark-mode #account-management .text-muted,
+body.dark-mode #account-management label,
+body.dark-mode #account-management small,
+body.dark-mode #title-account-summary {
+    color: #f8fafc !important;
+}
+
+body.dark-mode #account-management .alert-light {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Cible les éléments de la liste des transactions */
+body.dark-mode #entries-list .list-group-item {
+    background-color: #2a2a2a;
+    /* Fond sombre pour chaque élément */
+    border-color: #444;
+    /* Bordure plus subtile */
+    color: #e0e0e0;
+    /* Couleur du texte principal */
+}
+
+/* Style au survol pour un meilleur feedback utilisateur */
+body.dark-mode #entries-list .list-group-item:hover {
+    background-color: #333;
+    color: #ffffff;
+}
+
+/* Assure que le texte en gras (<strong>) est bien visible */
+body.dark-mode #entries-list .list-group-item strong {
+    color: #ffffff;
+    /* Texte blanc pur pour le rendre plus visible */
+}
+
+/* Style pour le titre du formulaire d'édition qui apparaît */
+body.dark-mode #edit-entry-form-title {
+    color: #ffffff;
+}
+
+/* Cible les éléments de la liste des stratégies */
+body.dark-mode #strategy-list .list-group-item {
+    background-color: #2a2a2a;
+    /* Fond sombre */
+    border-color: #444;
+    /* Bordure assortie */
+}
+
+/* Style au survol pour un meilleur feedback */
+body.dark-mode #strategy-list .list-group-item:hover {
+    background-color: #333;
+}

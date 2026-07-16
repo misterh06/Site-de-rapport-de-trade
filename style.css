@@ -1,0 +1,344 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.sidebar {
+    /* Fond futuriste avec l'image demandée */
+    background-image: url('images/menu-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: white;
+    padding: 15px;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Overlay sombre pour garantir la lisibilité du texte sur l'image */
+.sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 12, 41, 0.5);
+    /* Opacité 50% comme demandé */
+    backdrop-filter: blur(3px);
+    z-index: -1;
+}
+
+.sidebar a {
+    color: rgba(255, 255, 255, 0.75);
+    text-decoration: none;
+    display: block;
+    padding: 12px 15px;
+    border-radius: 8px;
+    /* Plus arrondi */
+    margin-bottom: 5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 3px solid transparent;
+    font-weight: 500;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-left-color: #00f2ff;
+    /* Cyan Néon */
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
+    /* Lueur futuriste */
+    transform: translateX(5px);
+}
+
+.sidebar a i {
+    margin-right: 10px;
+    transition: transform 0.3s ease;
+}
+
+.sidebar a:hover i {
+    transform: scale(1.2);
+    color: #00f2ff;
+}
+
+.account-switch-card {
+    background: linear-gradient(145deg, rgba(10, 14, 30, 0.92), rgba(17, 24, 39, 0.88));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+}
+
+.account-switch-card h6,
+.account-switch-card p,
+.account-switch-card .small,
+.account-switch-card .text-white-50 {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.account-switch-card i {
+    color: #7dd3fc !important;
+}
+
+.account-switch-button {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(30, 41, 59, 0.98));
+    color: #ffffff !important;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 12px;
+    box-shadow: 0 8px 18px rgba(8, 15, 27, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    font-weight: 500;
+    padding: 0.45rem 0.7rem;
+}
+
+.account-switch-button:hover,
+.account-switch-button:focus {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 1), rgba(30, 41, 59, 1));
+    color: #ffffff !important;
+    border-color: rgba(56, 189, 248, 0.7);
+    box-shadow: 0 0 0 0.18rem rgba(56, 189, 248, 0.18), 0 8px 18px rgba(8, 15, 27, 0.35);
+}
+
+.account-switch-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    display: none;
+    z-index: 1000;
+    background: linear-gradient(180deg, #111827 0%, #172033 100%);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.account-switch-menu.open {
+    display: block;
+}
+
+.account-switch-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: #f8fafc;
+    border: 0;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.92rem;
+}
+
+.account-switch-menu button:hover,
+.account-switch-menu button:focus {
+    background: rgba(148, 163, 184, 0.12);
+    color: #ffffff;
+}
+
+.account-switch-menu button.active {
+    background: rgba(56, 189, 248, 0.14);
+    color: #ffffff;
+}
+
+.content-section {
+    display: none;
+    padding: 20px;
+}
+
+.content-section.active {
+    display: block;
+}
+
+#auth-section {
+    max-width: 500px;
+    margin: 50px auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+}
+
+#performance-card .card-body {
+    height: 450px;
+}
+
+/* ========================================================= */
+/* ========================================================= */
+/*       Design Premium du Tableau d'Historique              */
+/* ========================================================= */
+
+#trade-history .table-responsive {
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+#trade-history .table {
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    /* ✨ RETOUR DU FIXED LAYOUT */
+    width: 100%;
+}
+
+#trade-history thead th {
+    background-color: #f1f3f5;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 15px 5px;
+    border-bottom: 2px solid #dee2e6;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+#trade-history tbody td {
+    padding: 12px 5px;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.85rem;
+    color: #212529;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#trade-history tbody tr:last-child td {
+    border-bottom: none;
+}
+
+#trade-history tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* Ajustement des largeurs pour un total de 100% - Optimisé pour éviter le chevauchement */
+/* Ajustement des largeurs pour un total de 100% - Optimisé pour éviter le chevauchement */
+.col-date {
+    width: 10%;
+    font-size: 0.75rem;
+}
+
+.col-duration {
+    width: 5%;
+    font-size: 0.75rem;
+}
+
+.col-asset {
+    width: 6%;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.col-type {
+    width: 5%;
+}
+
+.col-quality {
+    width: 10%;
+}
+
+.col-entries {
+    width: 6%;
+    text-align: center;
+    font-weight: bold;
+    color: #6c757d;
+}
+
+/* Colonne Nb Entrée */
+.col-numeric {
+    width: 8%;
+    text-align: center;
+}
+
+/* Qté */
+.col-price {
+    width: 9%;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+}
+
+.col-pnl {
+    width: 10%;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.col-actions {
+    width: 12%;
+    text-align: center;
+}
+
+/* Alignements spécifiques */
+#trade-history tbody td:nth-child(4) {
+    text-align: center;
+}
+
+/* Actif centré */
+#trade-history tbody td:last-child {
+    text-align: center;
+    overflow: visible;
+}
+
+/* Actions centrées */
+
+/* Pour éviter le chevauchement du texte dans les en-têtes */
+#trade-history thead th {
+    white-space: normal;
+    /* Autoriser le retour à la ligne */
+    vertical-align: middle;
+    padding: 12px 4px;
+    /* Padding augmenté pour espacer les titres */
+    text-align: center;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+/* ========================================================= */
+/*              Style pour le système d'étoiles              */
+/* ========================================================= */
+
+.star-rating {
+    direction: rtl;
+    /* Pour inverser l'ordre et permettre le hover sur toutes les étoiles précédentes */
+    display: inline-flex;
+    font-size: 2rem;
+    unicode-bidi: bidi-override;
+}
+
+.star-rating input {
+    display: none;
+}
+
+.star-rating label {
+    color: #ddd;
+    cursor: pointer;
+    padding: 0 5px;
+    transition: color 0.2s;
+}
+
+.star-rating label:hover,
+.star-rating label:hover~label {
+    color: #ffc107;
+}
+
+.star-rating input:checked~label {
+    color: #ffc107;
+}
+
+.star-rating label:hover {
+    transform: scale(1.2);
+    transition: transform 0.2s;
+}

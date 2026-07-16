@@ -1,0 +1,14 @@
+# .gitignore
+
+# Fichiers sensibles
+.env
+
+# Dépendances
+node_modules
+
+# Build et artefacts lourds
+/dist/
+/.vite/
+
+# Dossier volumineux non nécessaire au dépôt
+Adobe Acrobat XI/

@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon PEA - Gestion Long Terme</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <script>
+        if (window.ChartZoom) {
+            Chart.register(window.ChartZoom);
+        }
+    </script>
+    <link rel="stylesheet" href="pea.css">
+</head>
+
+<body>
+    <!-- Alerte si ouvert en local (file://) -->
+    <div id="local-mode-warning" class="bg-danger text-white text-center py-2"
+        style="display: none; position:sticky; top:0; z-index:9999;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Attention : Vous avez ouvert le fichier directement. Pour sauvegarder vos données, veuillez utiliser
+        <strong>Live Server</strong>.
+    </div>
+    <script>
+        if (window.location.protocol === 'file:') {
+            document.getElementById('local-mode-warning').style.display = 'block';
+        }
+    </script>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Navigation -->
+            <nav class="col-md-2 d-none d-md-block sidebar" id="pea-sidebar">
+                <div class="position-sticky pt-4">
+                    <h4 class="text-center mb-4" id="sidebar-title"><i class="bi bi-bank me-2"></i>Mon PEA</h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link active" href="#"><i
+                                    class="bi bi-pie-chart-fill me-2"></i>Synthèse</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#holdings"><i
+                                    class="bi bi-list-columns-reverse me-2"></i>Portefeuille</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#dividends"><i
+                                    class="bi bi-cash-coin me-2"></i>Dividendes</a></li>
+                    </ul>
+                    <div class="mt-5 px-3 text-center">
+                        <a href="index.html" class="btn btn-outline-light btn-sm w-100 mb-2"><i
+                                class="bi bi-arrow-left me-2"></i>Retour Journal</a>
+                        <button class="btn btn-outline-light btn-sm w-100" id="theme-toggle-btn">
+                            <i class="bi bi-sun-fill me-2"></i>Changer Thème
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Contenu -->
+            <main class="col-md-10 ms-sm-auto col-lg-10 px-md-4">
+
+                <!-- Overlay Auth avec Formulaire de Connexion Direct -->
+                <div id="auth-overlay"
+                    class="d-none flex-column align-items-center justify-content-center text-white py-5"
+                    style="min-height: 400px; background: rgba(0,0,0,0.85); border-radius: 12px; margin-top: 20px; position:absolute; top:0; left:0; width:100%; height:100%; z-index:1000;">
+
+                    <h4 class="mb-4 text-warning"><i class="bi bi-lock-fill me-2"></i>Accès Sécurisé</h4>
+
+                    <div id="auth-msg" class="text-center w-50" style="max-width: 400px;">
+                        <p class="text-white-50 mb-3">Veuillez vous reconnecter pour confirmer votre identité.</p>
+
+                        <form id="pea-login-form" class="text-start">
+                            <div class="mb-3">
+                                <label class="form-label text-white text-sm">Email</label>
+                                <input type="email" class="form-control bg-dark text-white border-secondary"
+                                    id="pea-email" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label text-white text-sm">Mot de passe</label>
+                                <input type="password" class="form-control bg-dark text-white border-secondary"
+                                    id="pea-password" required>
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100 fw-bold shadow-lg">Se Connecter &
+                                Accéder</button>
+                        </form>
+                        <hr class="border-secondary my-4">
+                        <small class="text-muted"><a href="index.html"
+                                class="text-white-50 text-decoration-none">Retourner à l'accueil</a></small>
+                    </div>
+                </div>
+
+                <!-- Interface Principale (Visible par défaut) -->
+                <div id="pea-app-content" style="position:relative;">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-4 pb-3 mb-4 border-bottom border-secondary">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <h1 class="h2" id="pea-title">Tableau de Bord</h1>
+                            <button id="jump-performance-btn" type="button" class="btn btn-outline-success btn-sm" title="Aller à Performance (Ctrl+Alt+P)" accesskey="p">
+                                <i class="bi bi-bar-chart-line me-1"></i>Performance
+                            </button>
+                            <button id="jump-history-btn" type="button" class="btn btn-outline-warning btn-sm" title="Aller à Historique (Ctrl+Alt+H)" accesskey="h">
+                                <i class="bi bi-clock-history me-1"></i>Historique
+                            </button>
+                        </div>
+                        <div class="btn-toolbar mb-2 mb-md-0 align-items-center">
+                            <button id="open-entry-rules-modal-btn" class="btn btn-outline-light me-2" type="button" data-bs-toggle="modal" data-bs-target="#entryRulesModal">
+                                <i class="bi bi-tools me-2"></i>Règles d'entrée
+                            </button>
+                            <button id="theme-toggle-btn" class="btn btn-outline-secondary me-2">
+                                <i class="bi bi-moon-fill"></i>
+                            </button>
+                            <a href="enfants.html" class="btn btn-outline-info me-2">
+                                <i class="bi bi-people-fill me-2"></i>Compte Enfants
+                            </a>
+                            <button type="button" class="btn btn-gold me-2 shadow-gold" data-bs-toggle="modal"
+                                data-bs-target="#operationModal">
+                                <i class="bi bi-plus-lg me-2"></i>Nouvelle Opération
+                            </button>
+                        </div>
+                    </div>
+                    <!-- KPIs -->
+                    <div class="row g-4 mb-5 row-cols-1 row-cols-md-3 row-cols-xl-5">
+                        <div class="col">
+                            <div class="kpi-card glass-panel h-100">
+                                <div class="kpi-icon bg-gradient-success"><i class="bi bi-safe2"></i></div>
+                                <div class="kpi-content">
+                                    <span class="kpi-label">Valeur Totale</span>
+                                    <h3 class="kpi-value" id="total-portfolio-value">-- €</h3>
+                                    <small class="text-white-50">Dont Liquidités: <span id="total-cash">-- €</span></small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="kpi-card glass-panel h-100">
+                                <div class="kpi-icon bg-gradient-purple"><i class="bi bi-cash-stack"></i></div>
+                                <div class="kpi-content">
+                                    <span class="kpi-label">Total des Gains</span>
+                                    <h3 class="kpi-value text-success" id="total-gains">-- €</h3>
+                                    <small class="text-success" id="total-gains-percent">-- %</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="kpi-card glass-panel h-100">
+                                <div class="kpi-icon bg-gradient-primary"><i class="bi bi-graph-up-arrow"></i></div>
+                                <div class="kpi-content">
+                                    <span class="kpi-label">Plus-Value Latente</span>
+                                    <h3 class="kpi-value text-success" id="total-pnl">-- €</h3>
+                                    <small class="text-success" id="total-pnl-percent">-- %</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="kpi-card glass-panel h-100">
+                                <div class="kpi-icon bg-gradient-warning"><i class="bi bi-trophy"></i></div>
+                                <div class="kpi-content">
+                                    <span class="kpi-label">Dividendes (Année)</span>
+                                    <h3 class="kpi-value text-warning" id="total-dividends-year">-- €</h3>
+                                    <small class="text-white-50">Rendement sur PRU: <span id="yield-on-cost">-- %</span></small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="kpi-card glass-panel h-100">
+                                <div class="kpi-icon bg-gradient-info"><i class="bi bi-piggy-bank"></i></div>
+                                <div class="kpi-content">
+                                    <span class="kpi-label">Investissement Total</span>
+                                    <h3 class="kpi-value" id="total-invested">-- €</h3>
+                                    <small class="text-white-50">Capital versé</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tableau Mon Portefeuille -->
+                    <div class="row mb-5" id="holdings">
+                        <div class="col-12">
+                            <div class="card glass-panel border-0">
+                                <div
+                                    class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Mon Portefeuille</h5>
+                                    <button class="btn btn-sm btn-outline-info" id="update-prices-btn"><i
+                                            class="bi bi-arrow-clockwise me-1"></i>Actualiser Prix</button>
+                                </div>
+                                <div class="card-body p-0 table-responsive">
+                                    <table id="holdings-table" class="table table-dark table-hover mb-0 align-middle">
+                                        <thead class="text-secondary small text-uppercase">
+                                            <tr>
+                                                <th class="ps-4 sortable" data-sort="asset" style="cursor: pointer;">Actif <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="sortable" data-sort="type" style="cursor: pointer;">Type <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="quantity" style="cursor: pointer;">Qté <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="pru" style="cursor: pointer;">PRU <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="price" style="cursor: pointer;">Cours <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="targetPrice1Y" style="cursor: pointer;">Objectif 1 an <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="value" style="cursor: pointer;">Val. Totale <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="pnl" style="cursor: pointer;">+/- Value <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="pnlPercent" style="cursor: pointer;">+/- Value (%) <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="pnlCapitalPercent" style="cursor: pointer;">P/L % capital versé <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end pe-4">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="holdings-body">
+                                            <!-- Rempli par JS -->
+                                        </tbody>
+                                        <tfoot id="holdings-foot">
+                                            <!-- Rempli par JS -->
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="card glass-panel border-0 mt-4">
+                                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <h6 class="mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Performance par action</h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <select id="asset-performance-status-filter" class="form-select form-select-sm bg-dark text-white border-secondary" style="min-width: 150px;">
+                                            <option value="all">Toutes</option>
+                                            <option value="open">Ouvertes</option>
+                                            <option value="closed">Clôturées</option>
+                                        </select>
+                                        <small class="text-white-50">Barres de P/L % sur capital versé</small>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0 table-responsive">
+                                    <table id="asset-performance-table" class="table table-dark table-sm table-condensed mb-0 align-middle">
+                                        <thead class="text-secondary small text-uppercase">
+                                            <tr>
+                                                <th class="ps-4 sortable" data-sort="asset" style="cursor: pointer;">Action <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-center sortable" data-sort="status" style="cursor: pointer;">Statut <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-center">Note</th>
+                                                <th class="text-center">Technique</th>
+                                                <th class="text-end sortable" data-sort="weight" style="cursor: pointer;">Poids <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="pnl" style="cursor: pointer;">P/L % <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end pe-4">Barre</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="asset-performance-body">
+                                            <!-- Rempli par JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Graphique Évolution des Gains / Pertes (pleine largeur) -->
+                    <div class="row mb-5">
+                        <div class="col-12">
+                            <div class="card glass-panel border-0">
+                                <div class="card-header bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-graph-up-arrow text-success"></i>
+                                        <h5 class="card-title mb-0">Évolution des Gains / Pertes</h5>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <select id="pnl-period-select" class="form-select form-select-sm bg-dark text-white border-secondary" style="min-width: 150px;">
+                                            <option value="all">Toute la période</option>
+                                            <option value="1m">1 mois</option>
+                                            <option value="3m">3 mois</option>
+                                            <option value="6m">6 mois</option>
+                                            <option value="1y">1 an</option>
+                                            <option value="2y">2 ans</option>
+                                        </select>
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="Vue du PnL">
+                                            <button type="button" class="btn btn-outline-light pnl-view-btn active" data-view="cumulative">Cumulative</button>
+                                            <button type="button" class="btn btn-outline-light pnl-view-btn" data-view="daily">Journalière</button>
+                                            <button type="button" class="btn btn-outline-light pnl-view-btn" data-view="weekly">Semaine</button>
+                                            <button type="button" class="btn btn-outline-light pnl-view-btn" data-view="monthly">Mensuelle</button>
+                                            <button type="button" class="btn btn-outline-light pnl-view-btn" data-view="yearly">Annuel</button>
+                                        </div>
+                                        <small class="text-white-50">Roulette = zoom</small>
+                                    </div>
+                                </div>
+                                <div class="card-body" style="height: 280px; position: relative;">
+                                    <canvas id="pnlEvolutionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Graphiques -->
+                    <div class="row mb-5">
+                        <div class="col-lg-8">
+                            <div class="card glass-panel border-0 h-100">
+                                <div class="card-header bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <h5 class="card-title mb-0">Portefeuille vs Investissement</h5>
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <select id="portfolio-period-select" class="form-select form-select-sm bg-dark text-white border-secondary" style="min-width: 150px;">
+                                            <option value="all">Toute la période</option>
+                                            <option value="1m">1 mois</option>
+                                            <option value="3m">3 mois</option>
+                                            <option value="6m">6 mois</option>
+                                            <option value="1y">1 an</option>
+                                            <option value="2y">2 ans</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="portfolioGrowthChart" height="300"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card glass-panel border-0 h-100">
+                                <div class="card-header bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <h5 class="card-title mb-0">Allocation</h5>
+                                    <select id="allocation-view-select" class="form-select form-select-sm bg-dark text-white border-secondary" style="min-width: 150px;">
+                                        <option value="all">Toutes les actions</option>
+                                        <option value="10">Top 10</option>
+                                        <option value="20">Top 20</option>
+                                        <option value="30">Top 30</option>
+                                        <option value="50">Top 50</option>
+                                    </select>
+                                </div>
+                                <div class="card-body d-flex align-items-center justify-content-center">
+                                    <canvas id="allocationChart" height="300"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Historique des Transactions -->
+                    <div class="row mb-5">
+                        <div class="col-12">
+                            <div class="card glass-panel border-0">
+                                <div class="card-header bg-transparent border-0">
+                                    <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Historique
+                                        des Opérations</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3 mb-3 align-items-end">
+                                        <div class="col-md-4">
+                                            <label for="pea-history-filter" class="form-label small text-white-50 mb-1">Recherche</label>
+                                            <input type="search" id="pea-history-filter"
+                                                class="form-control bg-dark text-white border-secondary"
+                                                placeholder="Actif, type, statut…">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="pea-history-type-filter" class="form-label small text-white-50 mb-1">Type</label>
+                                            <select id="pea-history-type-filter" class="form-select bg-dark text-white border-secondary">
+                                                <option value="all">Tous</option>
+                                                <option value="trade">Trade</option>
+                                                <option value="dividend">Dividende</option>
+                                                <option value="deposit">Dépôt</option>
+                                                <option value="withdrawal">Retrait</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="pea-history-status-filter" class="form-label small text-white-50 mb-1">Statut</label>
+                                            <select id="pea-history-status-filter" class="form-select bg-dark text-white border-secondary">
+                                                <option value="all">Tous</option>
+                                                <option value="open">Ouverte</option>
+                                                <option value="closed">Fermée</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="pea-history-period-filter" class="form-label small text-white-50 mb-1">Période</label>
+                                            <select id="pea-history-period-filter" class="form-select bg-dark text-white border-secondary">
+                                                <option value="all">Toute</option>
+                                                <option value="1m">1 mois</option>
+                                                <option value="3m">3 mois</option>
+                                                <option value="6m">6 mois</option>
+                                                <option value="1y">1 an</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="pea-history-sort-select" class="form-label small text-white-50 mb-1">Trier par</label>
+                                            <select id="pea-history-sort-select" class="form-select bg-dark text-white border-secondary">
+                                                <option value="date">Date</option>
+                                                <option value="amount">Montant</option>
+                                                <option value="pnl">Total</option>
+                                                <option value="yield">Rendement</option>
+                                                <option value="asset">Actif</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 text-white-50 small">Cliquez sur les en-têtes pour un tri instantané, ou utilisez les filtres ci-dessus pour cibler la vue.</div>
+                                    </div>
+                                    <div class="table-responsive" style="min-height: 520px; max-height: 720px; overflow-y: auto;">
+                                        <table id="history-table" class="table table-dark table-sm table-hover mb-0 align-middle">
+                                        <thead class="text-secondary small text-uppercase">
+                                            <tr>
+                                                <th class="ps-4 sortable" data-sort="date" style="cursor: pointer;">Date <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="sortable" data-sort="type" style="cursor: pointer;">Type <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="sortable" data-sort="asset" style="cursor: pointer;">Actif <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="quantity" style="cursor: pointer;">Qté <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="price" style="cursor: pointer;">Prix <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="amount" style="cursor: pointer;">Montant position <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="pnl" style="cursor: pointer;">Total <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="yield" style="cursor: pointer;">Rendement <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end">P/L % capital versé</th>
+                                                <th class="text-end">Frais</th>
+                                                <th class="text-end">TTF</th>
+                                                <th class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="history-body">
+                                            <!-- Rempli par JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Fin pea-app-content -->
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Gestion des Règles d'Entrée -->
+    <div class="modal fade" id="entryRulesModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content glass-modal text-white">
+                <div class="modal-header border-bottom border-light-subtle">
+                    <h5 class="modal-title"><i class="bi bi-tools me-2"></i>Gestion des règles d'entrée</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-white-50 small mb-3">Créez et éditez vos règles pour les achats PEA. Elles seront proposées automatiquement dans le formulaire d'achat.</p>
+                    <form id="entry-rule-form" class="row g-2 align-items-end mb-3">
+                        <input type="hidden" id="entry-rule-edit-id">
+                        <div class="col-md-5">
+                            <label for="new-entry-rule-name" class="form-label small mb-1">Nouvelle règle</label>
+                            <input type="text" id="new-entry-rule-name" class="form-control bg-dark text-white border-secondary" placeholder="Ex : Données technique">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="new-entry-rule-value" class="form-label small mb-1">Valeur</label>
+                            <input type="text" id="new-entry-rule-value" class="form-control bg-dark text-white border-secondary" placeholder="Ex : strong buy / 50, 200, 30">
+                        </div>
+                        <div class="col-md-3 d-grid">
+                            <button type="submit" class="btn btn-gold" id="save-entry-rule-btn">Ajouter</button>
+                        </div>
+                        <div class="col-md-12 d-grid mt-2">
+                            <button type="button" class="btn btn-outline-light" id="cancel-entry-rule-edit-btn" style="display:none;">Annuler</button>
+                        </div>
+                    </form>
+                    <div id="entry-rule-manager-list" class="list-group list-group-flush"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Opération -->
+    <div class="modal fade" id="operationModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-modal text-white">
+                <div class="modal-header border-bottom border-light-subtle">
+                    <h5 class="modal-title">Nouvelle Opération</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="pea-operation-form">
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select bg-dark text-white border-secondary" id="op-type">
+                                <option value="deposit">💰 Dépôt d'Espèces (Apport)</option>
+                                <option value="buy">💎 Achat d'Action/ETF</option>
+                                <option value="sell">💸 Vente</option>
+                                <option value="dividend">🏆 Dividende Reçu</option>
+                                <option value="withdrawal">📤 Retrait</option>
+                            </select>
+                        </div>
+
+                        <!-- Champs Titres (Achat/Vente) -->
+                        <div id="asset-fields">
+                            <div class="mb-3">
+                                <label for="op-asset" class="form-label">Nom de l'actif</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary"
+                                    id="op-asset" placeholder="Ex: Air Liquide">
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label for="op-ticker" class="form-label">Ticker (Symbole) <small
+                                            class="text-muted text-warning">*</small></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control bg-dark text-white border-secondary"
+                                            id="op-ticker" placeholder="Ex: MC.PA">
+                                        <button class="btn btn-outline-warning" type="button" id="btn-search-ticker"
+                                            title="Trouver le ticker" onclick="searchTickerAuto()"><i
+                                                class="bi bi-search"></i></button>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <label for="op-isin" class="form-label">Code ISIN (Optionnel)</label>
+                                    <input type="text" class="form-control bg-dark text-white border-secondary"
+                                        id="op-isin" placeholder="FR0000...">
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label for="op-quantity" class="form-label">Quantité</label>
+                                    <input type="number" step="any"
+                                        class="form-control bg-dark text-white border-secondary" id="op-quantity">
+                                </div>
+                                <div class="col-6">
+                                    <label for="op-price" class="form-label">Prix / Unité (€)</label>
+                                    <input type="number" step="any"
+                                        class="form-control bg-dark text-white border-secondary" id="op-price">
+                                </div>
+                            </div>
+
+                            <div id="buy-target-price-fields" style="display:none;">
+                                <div class="mb-3">
+                                    <label for="op-target-price-1y" class="form-label">Objectif de prix sur 1 an (€)</label>
+                                    <input type="number" step="any" min="0"
+                                        class="form-control bg-dark text-white border-secondary" id="op-target-price-1y"
+                                        placeholder="Ex: 120">
+                                    <small class="text-white-50">Ce prix sera enregistré avec l'achat pour suivre votre objectif.</small>
+                                </div>
+                            </div>
+
+                            <div id="buy-rating-fields" style="display:none;">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label for="op-technical-data" class="form-label">Donnée technique</label>
+                                        <select class="form-select bg-dark text-white border-secondary" id="op-technical-data">
+                                            <option value="">Sélectionner</option>
+                                            <option value="strong_sell">Strong Sell</option>
+                                            <option value="sell">Sell</option>
+                                            <option value="neutre">Neutre</option>
+                                            <option value="buy">Buy</option>
+                                            <option value="strong_buy">Strong Buy</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="op-analyst-note" class="form-label">Note des analystes</label>
+                                        <select class="form-select bg-dark text-white border-secondary" id="op-analyst-note">
+                                            <option value="">Sélectionner</option>
+                                            <option value="strong_sell">Strong Sell</option>
+                                            <option value="sell">Sell</option>
+                                            <option value="neutre">Neutre</option>
+                                            <option value="buy">Buy</option>
+                                            <option value="strong_buy">Strong Buy</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mb-3" id="entry-rules-group" style="display:none;">
+                                <div class="card-header py-2 bg-white">
+                                    <h6 class="mb-0 text-primary"><i class="bi bi-check2-all me-2"></i>Règles d'entrée</h6>
+                                </div>
+                                <div class="card-body py-2">
+                                    <div id="entry-rules-checkboxes" class="row g-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Pour le Dépôt, on réutilise le champ prix pour le montant -->
+
+                        <div class="mb-3 mt-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control bg-dark text-white border-secondary" id="op-date"
+                                required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Frais (€)</label>
+                            <input type="number" step="any" class="form-control bg-dark text-white border-secondary"
+                                id="op-fees" value="0">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">TTF (%)</label>
+                            <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary"
+                                id="op-ttf-percent" value="0" placeholder="Ex. 0,10">
+                            <small class="text-white-50">Le montant sera calculé automatiquement sur le total de la transaction.</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-gold w-100 fw-bold mt-2">Valider</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Édition Position (Groupée) -->
+    <div class="modal fade" id="editPEAPositionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content glass-modal text-white">
+                <div class="modal-header border-bottom border-light-subtle">
+                    <h5 class="modal-title" id="editPEAPositionModalTitle">Modifier le Trade</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="text-warning-emphasis fw-bold mb-2">Transactions d'Achat (Entrées)</h6>
+                    <p class="text-muted small">Cliquez sur un achat pour le modifier.</p>
+                    <div id="pea-entries-list" class="list-group mb-4">
+                        <!-- Généré par JS -->
+                    </div>
+
+                    <h6 class="text-warning-emphasis fw-bold mb-2">Transactions de Vente (Sorties)</h6>
+                    <div id="pea-exits-list" class="list-group mb-4">
+                        <!-- Généré par JS -->
+                    </div>
+
+                    <hr class="border-light-subtle">
+                    <h6 id="edit-pea-op-form-title" class="text-warning fw-bold" style="display: none;">Modifier la transaction</h6>
+                    <form id="edit-pea-op-form" style="display: none;">
+                        <input type="hidden" id="editPEAPositionId">
+                        <input type="hidden" id="editPEAOpId"> <!-- ID Firebase de l'opération individuelle -->
+                        <input type="hidden" id="editPEAOpType">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6 col-12">
+                                <label for="editPEAOpAsset" class="form-label small mb-1">Nom de l'actif</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" id="editPEAOpAsset" required>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="editPEAOpTicker" class="form-label small mb-1">Ticker</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" id="editPEAOpTicker" required>
+                            </div>
+                        </div>
+                        <div id="edit-buy-target-price-fields" style="display:none;">
+                            <div class="mb-3">
+                                <label for="editPEAOpTargetPrice1Y" class="form-label small mb-1">Objectif de prix sur 1 an (€)</label>
+                                <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="editPEAOpTargetPrice1Y" placeholder="Ex: 120">
+                            </div>
+                        </div>
+                        <div id="edit-buy-rating-fields" style="display:none;">
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label for="editPEAOpTechnicalData" class="form-label small mb-1">Donnée technique</label>
+                                    <select class="form-select bg-dark text-white border-secondary" id="editPEAOpTechnicalData">
+                                        <option value="">Sélectionner</option>
+                                        <option value="strong_sell">Strong Sell</option>
+                                        <option value="sell">Sell</option>
+                                        <option value="neutre">Neutre</option>
+                                        <option value="buy">Buy</option>
+                                        <option value="strong_buy">Strong Buy</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label for="editPEAOpAnalystNote" class="form-label small mb-1">Note des analystes</label>
+                                    <select class="form-select bg-dark text-white border-secondary" id="editPEAOpAnalystNote">
+                                        <option value="">Sélectionner</option>
+                                        <option value="strong_sell">Strong Sell</option>
+                                        <option value="sell">Sell</option>
+                                        <option value="neutre">Neutre</option>
+                                        <option value="buy">Buy</option>
+                                        <option value="strong_buy">Strong Buy</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mb-3 edit-entry-rules-group" id="edit-entry-rules-group" style="display:none;">
+                            <div class="card-header py-2 bg-white">
+                                <h6 class="mb-0 text-primary"><i class="bi bi-check2-all me-2"></i>Règles d'entrée</h6>
+                            </div>
+                            <div class="card-body py-2">
+                                <div id="edit-entry-rules-checkboxes" class="row g-2"></div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6 col-12">
+                                <label for="editPEAOpDate" class="form-label small mb-1">Date</label>
+                                <input type="date" class="form-control bg-dark text-white border-secondary" id="editPEAOpDate" required>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="editPEAOpFees" class="form-label small mb-1">Frais (€)</label>
+                                <input type="number" step="any" class="form-control bg-dark text-white border-secondary" id="editPEAOpFees" required>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label for="editPEAOpTTFPercent" class="form-label small mb-1">TTF (%)</label>
+                                <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="editPEAOpTTFPercent" required>
+                                <small class="text-muted">Le montant sera recalculé automatiquement sur le total.</small>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="editPEAOpQuantity" class="form-label small mb-1">Quantité</label>
+                                <input type="number" step="any" class="form-control bg-dark text-white border-secondary" id="editPEAOpQuantity" required>
+                            </div>
+                            <div class="col-6">
+                                <label for="editPEAOpPrice" class="form-label small mb-1">Prix Unitaire (€)</label>
+                                <input type="number" step="any" class="form-control bg-dark text-white border-secondary" id="editPEAOpPrice" required>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-gold flex-grow-1 fw-bold">Enregistrer les changements</button>
+                            <button type="button" class="btn btn-outline-light" id="cancel-pea-op-edit-btn">Annuler</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Vente Partielle -->
+    <div class="modal fade" id="partialSellModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-modal text-white">
+                <div class="modal-header border-bottom border-light-subtle">
+                    <h5 class="modal-title">Vendre partiellement</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="partial-sell-form">
+                        <input type="hidden" id="sellPositionAsset">
+                        <input type="hidden" id="sellPositionTicker">
+                        <div class="mb-3">
+                            <label for="sellQuantity" class="form-label">Quantité à vendre</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" id="sellQuantity" required>
+                                <span class="input-group-text bg-dark text-white border-secondary" id="sellMaxQty">Max: --</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="sellPrice" class="form-label">Prix unitaire de vente (€)</label>
+                            <input type="number" step="any" class="form-control bg-dark text-white border-secondary" id="sellPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="sellDate" class="form-label">Date</label>
+                            <input type="date" class="form-control bg-dark text-white border-secondary" id="sellDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="sellFees" class="form-label">Frais (€)</label>
+                            <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="sellFees" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="sellTTFPercent" class="form-label">TTF (%)</label>
+                            <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="sellTTFPercent" value="0">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success flex-grow-1 fw-bold">Vendre</button>
+                            <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Annuler</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Fonctionnels -->
+    <script type="module">
+        import { auth, onAuthStateChanged } from "./firebase-config.js";
+        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+        // Gestion de la connexion directe
+        const loginForm = document.getElementById('pea-login-form');
+        const overlay = document.getElementById('auth-overlay');
+
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                console.log("Tentative de connexion...");
+                const email = document.getElementById('pea-email').value;
+                const pass = document.getElementById('pea-password').value;
+                const btn = loginForm.querySelector('button');
+
+                try {
+                    btn.textContent = "Connexion en cours...";
+                    btn.disabled = true;
+                    // Cette méthode devrait déclencher onAuthStateChanged automatiquement si succès
+                    await signInWithEmailAndPassword(auth, email, pass);
+                    console.log("Connexion réussie (signInWithEmailAndPassword resolu).");
+                } catch (error) {
+                    console.error("Erreur de connexion :", error);
+                    alert("Erreur de connexion : " + error.message);
+                    btn.textContent = "Se Connecter & Accéder";
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // Écouteur d'état d'authentification
+        onAuthStateChanged(auth, (user) => {
+            console.log("État Auth changé :", user ? "Connecté comme " + user.email : "Déconnecté");
+            if (user) {
+                // Utilisateur connecté -> Cacher l'overlay
+                if (overlay) {
+                    overlay.classList.add('d-none');
+                    overlay.classList.remove('d-flex');
+                }
+            } else {
+                // Utilisateur déconnecté -> Afficher l'overlay
+                if (overlay) {
+                    overlay.classList.remove('d-none');
+                    overlay.classList.add('d-flex');
+                }
+            }
+        });
+
+        // Sécurité supplémentaire : Vérifier l'état actuel si le listener tarde
+        if (auth.currentUser) {
+            console.log("Utilisateur déjà détecté (currentUser) :", auth.currentUser.email);
+            if (overlay) {
+                overlay.classList.add('d-none');
+                overlay.classList.remove('d-flex');
+            }
+        }
+    </script>
+    <script type="module" src="pea.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

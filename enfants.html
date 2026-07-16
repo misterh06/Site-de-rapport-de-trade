@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compte Enfants - Le Coffre des Explorateurs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="enfants.css">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 d-none d-md-block sidebar" id="enfants-sidebar">
+                <div class="position-sticky pt-4">
+                    <h4 class="text-center mb-4"><i class="bi bi-stars me-2"></i>Compte Enfants</h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#overview"><i class="bi bi-house-heart me-2"></i>Vue d'ensemble</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#comparison"><i class="bi bi-bar-chart-line me-2"></i>Comparaison</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#mission"><i class="bi bi-bullseye me-2"></i>Mission du mois</a>
+                        </li>
+                    </ul>
+                    <div class="mt-5 px-3">
+                        <a href="index.html" class="btn btn-outline-light btn-sm w-100 mb-2"><i class="bi bi-arrow-left me-2"></i>Retour Journal</a>
+                        <a href="pea.html" class="btn btn-outline-light btn-sm w-100"><i class="bi bi-bank me-2"></i>Voir le PEA</a>
+                    </div>
+                </div>
+            </nav>
+
+            <main class="col-md-10 ms-sm-auto col-lg-10 px-md-4 py-4">
+                <section class="hero-card glass-panel p-4 p-lg-5 mb-4" id="overview">
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <p class="eyebrow"><i class="bi bi-lightning-charge me-2"></i>Compte réel • suivi dans Firebase</p>
+                            <h1>Le coffre des explorateurs</h1>
+                            <p class="hero-text">Céliane et Alexandre analysent des sociétés, passent des ordres et suivent l’évolution de leur capital depuis un vrai compte connecté.</p>
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <button id="open-order-modal-btn" class="btn btn-hero"><i class="bi bi-plus-circle me-2"></i>Passer un ordre</button>
+                                <button id="refresh-prices-btn" class="btn btn-outline-secondary"><i class="bi bi-arrow-clockwise me-2"></i>Actualiser les prix</button>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 text-center mt-4 mt-lg-0">
+                            <div class="hero-badge">💰</div>
+                            <div class="hero-metric">
+                                <small>Capital actuel</small>
+                                <h3 id="overall-capital">-- €</h3>
+                                <small id="overall-gain">--</small>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="auth-panel" class="glass-panel p-4 mb-4">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-lg-8">
+                            <h5 class="mb-2"><i class="bi bi-lock-fill me-2"></i>Connexion au compte</h5>
+                            <p class="mb-0 text-muted">Connecte-toi pour voir les ordres réels et les performances enregistrées dans Firebase.</p>
+                        </div>
+                        <div class="col-lg-4">
+                            <form id="auth-form" class="d-flex flex-column gap-2">
+                                <input type="email" id="auth-email" class="form-control" placeholder="Email" required>
+                                <input type="password" id="auth-password" class="form-control" placeholder="Mot de passe" required>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-hero btn-sm" data-mode="login">Se connecter</button>
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm" data-mode="signup">Créer un compte</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div id="auth-message" class="small mt-3"></div>
+                </section>
+
+                <div id="app-shell" class="d-none">
+                    <div class="row g-4 mb-4" id="kids-grid"></div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-lg-8">
+                            <div class="glass-panel p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Évolution du capital</h5>
+                                    <span class="mini-pill">Données réelles du compte</span>
+                                </div>
+                                <canvas id="capital-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="glass-panel p-4" id="comparison">
+                                <h5 class="mb-3"><i class="bi bi-trophy me-2"></i>Derniers ordres</h5>
+                                <div id="orders-list"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <div class="glass-panel p-4">
+                                <h5 class="mb-3"><i class="bi bi-journal-richtext me-2"></i>Historique des opérations</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort="date" style="cursor: pointer;">Date <i class="bi bi-arrow-down-up ms-1"></i></th>
+                                                <th class="sortable" data-sort="type" style="cursor: pointer;">Type <i class="bi bi-arrow-down-up ms-1"></i></th>
+                                                <th class="sortable" data-sort="asset" style="cursor: pointer;">Actif <i class="bi bi-arrow-down-up ms-1"></i></th>
+                                                <th class="sortable" data-sort="quantity" style="cursor: pointer;">Qté <i class="bi bi-arrow-down-up ms-1"></i></th>
+                                                <th class="sortable" data-sort="price" style="cursor: pointer;">Prix <i class="bi bi-arrow-down-up ms-1"></i></th>
+                                                <th class="sortable" data-sort="amount" style="cursor: pointer;">Montant <i class="bi bi-arrow-down-up ms-1"></i></th>
+                                                <th>Position</th>
+                                                <th>Total</th>
+                                                <th>Rendement</th>
+                                                <th>P/L % capital versé</th>
+                                                <th>Frais (€)</th>
+                                                <th>TTF (€)</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="orders-table-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-cart-plus me-2"></i>Passer un ordre</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="order-form">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Enfant</label>
+                                <select id="order-investor" class="form-select">
+                                    <option value="Céliane">Céliane</option>
+                                    <option value="Alexandre">Alexandre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Type d'opération</label>
+                                <select id="order-type" class="form-select">
+                                    <option value="buy">Achat</option>
+                                    <option value="sell">Vente</option>
+                                    <option value="deposit">Apport</option>
+                                    <option value="withdrawal">Retrait</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="field-asset">
+                                <label class="form-label">Nom de l'actif</label>
+                                <input type="text" id="order-asset" class="form-control" placeholder="ex. TotalEnergies">
+                            </div>
+                            <div class="col-md-6" id="field-ticker">
+                                <label class="form-label">Ticker</label>
+                                <input type="text" id="order-ticker" class="form-control" placeholder="ex. TTE.PA">
+                            </div>
+                            <div class="col-md-6" id="field-quantity">
+                                <label class="form-label">Quantité</label>
+                                <input type="number" id="order-quantity" class="form-control" step="0.01" min="0.01">
+                            </div>
+                            <div class="col-md-6" id="field-price">
+                                <label class="form-label">Prix unitaire</label>
+                                <input type="number" id="order-price" class="form-control" step="0.01" min="0.01">
+                            </div>
+                            <div class="col-md-6" id="field-amount">
+                                <label class="form-label">Montant</label>
+                                <input type="number" id="order-amount" class="form-control" step="0.01" min="0.01">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Frais (€)</label>
+                                <input type="number" id="order-fees" class="form-control" step="0.01" min="0" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">TTF (%)</label>
+                                <input type="number" id="order-ttf-percent" class="form-control" step="0.01" min="0" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" id="order-date" class="form-control" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Note</label>
+                                <textarea id="order-notes" class="form-control" rows="3" placeholder="Pourquoi cet ordre ?"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer mt-3">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-hero">Enregistrer l'ordre</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="enfants.js"></script>
+</body>
+
+</html>

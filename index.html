@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Journal de Trading</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Pour les icônes du bouton de thème -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Lier vos fichiers CSS -->
+    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="dark-mode.css">
+    <link rel="stylesheet" href="account-glass.css">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Barre de navigation latérale -->
+            <nav class="col-md-2 d-none d-md-block sidebar" id="main-sidebar">
+                <div class="position-sticky pt-3">
+                    <h4 class="text-center my-4">Mon Journal de Trading</h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="#" data-section="dashboard">Tableau de Bord</a>
+                        </li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-section="open-positions">Positions
+                                Ouvertes</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-section="trade-history">Historique des
+                                Positions</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-section="reports-analytics">Rapports &
+                                Statistiques</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-section="account-management">Gestion du
+                                Compte</a></li>
+                        <li class="nav-item mt-3">
+                            <a class="nav-link text-warning" href="pea.html">
+                                <i class="bi bi-bank me-2"></i>Mon PEA (Long Terme)
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-info" href="enfants.html">
+                                <i class="bi bi-stars me-2"></i>Compte Enfants
+                            </a>
+                        </li>
+                    </ul>
+                    <hr>
+
+                    <div class="text-center px-3">
+                        <p id="user-display" class="text-light small"></p>
+                        <button class="btn btn-outline-light btn-sm mb-2" id="logout-btn">Déconnexion</button>
+                        <button class="btn btn-outline-light btn-sm" id="theme-toggle-btn"><i
+                                class="bi bi-sun-fill"></i></button>
+                    </div>
+
+                </div>
+            </nav>
+
+            <!-- Contenu principal -->
+            <main class="col-md-10 ms-sm-auto col-lg-10 px-md-4" id="main-content-area">
+                <div
+                    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2" id="section-title">Chargement...</h1>
+                    
+                    <!-- Sélecteur de compte dans l'en-tête -->
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-muted small me-2 d-none d-sm-inline"><i class="bi bi-bank2 text-info me-1"></i>Compte :</span>
+                        <div class="account-switch-dropdown position-relative" style="min-width: 220px;">
+                            <button id="account-switch-button" type="button" class="btn btn-sm account-switch-button text-start d-flex align-items-center justify-content-between w-100" aria-expanded="false">
+                                <span id="account-switch-label">Trading (U21752904)</span>
+                                <i class="bi bi-chevron-down ms-2"></i>
+                            </button>
+                            <div id="account-switch-menu" class="account-switch-menu shadow-lg" role="menu" aria-label="Choisir un compte"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section d'Authentification -->
+                <section id="auth-section" class="content-section">
+                    <h2>Connexion / Inscription</h2>
+                    <div id="auth-error-message" class="alert alert-danger d-none mt-3" role="alert"></div>
+                    <form id="login-form" class="mb-4 mt-4">
+                        <h4 class="mb-3">Se connecter</h4>
+                        <div class="mb-3"><label for="loginEmail" class="form-label">Email</label><input type="email"
+                                class="form-control" id="loginEmail" required></div>
+                        <div class="mb-3"><label for="loginPassword" class="form-label">Mot de passe</label><input
+                                type="password" class="form-control" id="loginPassword" required></div>
+                        <button type="submit" class="btn btn-primary">Se connecter</button>
+                    </form>
+                    <hr>
+                    <form id="signup-form">
+                        <h4 class="mb-3">Créer un compte</h4>
+                        <div class="mb-3"><label for="signupEmail" class="form-label">Email</label><input type="email"
+                                class="form-control" id="signupEmail" required></div>
+                        <div class="mb-3"><label for="signupPassword" class="form-label">Mot de passe</label><input
+                                type="password" class="form-control" id="signupPassword" required>
+                            <div class="form-text">Minimum 6 caractères.</div>
+                        </div>
+                        <button type="submit" class="btn btn-success">S'inscrire</button>
+                    </form>
+                </section>
+
+                <!-- Section Tableau de Bord -->
+                <section id="dashboard" class="content-section">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button id="manage-strategies-btn" class="btn btn-outline-secondary">
+                            <i class="bi bi-card-checklist"></i> Gérer mes Stratégies
+                        </button>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xl-8">
+                            <div class="card shadow-sm mb-4" id="performance-card">
+                                <!-- ✨ REMPLACEZ LE CARD-HEADER PAR CELUI-CI ✨ -->
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span>Courbe de Performance Cumulative</span>
+                                    <div id="performance-chart-controls">
+                                        <div class="btn-group btn-group-sm me-2" role="group">
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                data-range="week">1S</button>
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                data-range="month">1M</button>
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                data-range="3month">3M</button>
+                                            <button type="button" class="btn btn-outline-secondary"
+                                                data-range="year">1A</button>
+                                            <button type="button" class="btn btn-outline-secondary active"
+                                                data-range="all">Tout</button>
+                                        </div>
+                                        <button class="btn btn-outline-secondary btn-sm" id="reset-zoom-btn"
+                                            title="Réinitialiser le zoom">
+                                            <i class="bi bi-arrows-angle-contract"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body"> <!-- Le card-body ne change pas -->
+                                    <canvas id="performanceChart"></canvas>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-xl-4">
+                            <div class="card shadow-sm mb-4">
+                                <div class="card-header">Statistiques Clés</div>
+                                <div class="card-body">
+                                    <h5>Profit/Perte Net Total</h5>
+                                    <div class="h3" id="total-profit-loss">
+                                        <hr>
+                                        <h5>Taux de Réussite</h5>
+                                        <p class="h3" id="win-rate">0%</p>
+                                        <hr>
+                                        <h5>Positions Clôturées</h5>
+                                        <p class="h3" id="total-trades">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card shadow-sm">
+                            <div class="card-header">Dernières Positions Clôturées</div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Date Clôture</th>
+                                                <th>Actif</th>
+                                                <th>Type</th>
+                                                <th>P/L Réalisé</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="last-trades-body">
+                                            <!-- Données insérées par JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                </section>
+
+                <!-- Section Positions Ouvertes -->
+                <section id="open-positions" class="content-section">
+
+                    <button id="show-new-position-form-btn" class="btn btn-primary mb-3">Ouvrir une Nouvelle
+                        Position</button>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Actif</th>
+                                    <th>Type</th>
+                                    <th>Quantité</th>
+                                    <th>Prix d'Entrée Moyen</th>
+                                    <th>Valeur Engagée</th>
+                                    <th>P/L Réalisé</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="open-positions-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Section Historique -->
+                <section id="trade-history" class="content-section">
+
+
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th class="col-date sortable" data-sort="entry-date" style="cursor: pointer;">Ouverture <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                    <th class="col-date sortable" data-sort="exit-date" style="cursor: pointer;">Clôture <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                    <th class="col-duration">Durée</th>
+                                    <th class="col-asset sortable" data-sort="asset" style="cursor: pointer;">Actif <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                    <th class="col-type">Type</th>
+                                    <th class="col-quality">Efficacité</th>
+                                    <th class="col-entries">Nb Entrée</th>
+                                    <th class="col-numeric">Qté</th>
+                                    <th class="col-price">Entrée Moy.</th>
+                                    <th class="col-price">Sortie Moy.</th>
+                                    <th class="col-pnl sortable" data-sort="pnl" style="cursor: pointer;">P/L <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                    <th class="col-actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-trades-body"></tbody>
+                        </table>
+                    </div> <!-- La div se termine ICI -->
+
+                    <!-- La navigation est MAINTENANT à l'extérieur -->
+                    <nav class="mt-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <!-- ✨ NOUVEL ÉLÉMENT AJOUTÉ ✨ -->
+                            <span id="pagination-count-info" class="text-muted me-3"></span>
+                            <span id="pagination-info">Page 1 sur 1</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-secondary" id="prev-page-btn" disabled>Précédent</button>
+                            <button class="btn btn-outline-secondary" id="next-page-btn" disabled>Suivant</button>
+                        </div>
+                    </nav>
+                </section>
+                <section id="reports-analytics" class="content-section">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
+                        <h2 class="h2 text-primary fw-bold">
+                            <i class="bi bi-bar-chart-line-fill me-2"></i>Rapports & Statistiques
+                        </h2>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary">Partager</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary">Exporter</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!--                  PREMIÈRE RANGÉE (3 GRAPHIQUES)           -->
+                    <!-- ========================================================= -->
+                    <div class="row mt-4">
+                        <!-- Graphique 1 : P&L Mensuel -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(224, 195, 252, 0.15) 0%, rgba(142, 197, 252, 0.15) 100%);">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span>P/L par Mois</span>
+                                    <div class="year-navigator">
+                                        <button class="btn btn-outline-secondary btn-sm" id="pnl-prev-year">‹</button>
+                                        <strong id="pnl-current-year" class="mx-2">2024</strong>
+                                        <button class="btn btn-outline-secondary btn-sm" id="pnl-next-year">›</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="monthlyPnLChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 2 : Activité Mensuelle -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(224, 195, 252, 0.15) 0%, rgba(142, 197, 252, 0.15) 100%);">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span>Activité Mensuelle</span>
+                                    <div class="year-navigator">
+                                        <button class="btn btn-outline-secondary btn-sm"
+                                            id="activity-prev-year">‹</button>
+                                        <strong id="activity-current-year" class="mx-2">2024</strong>
+                                        <button class="btn btn-outline-secondary btn-sm"
+                                            id="activity-next-year">›</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="monthlyActivityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 3 : Taux de Réussite par Actif -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(224, 195, 252, 0.15) 0%, rgba(142, 197, 252, 0.15) 100%);">
+                                <div class="card-header">Taux de Réussite par Actif</div>
+                                <div class="card-body">
+                                    <canvas id="winRateByAssetChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!--                  DEUXIÈME RANGÉE (3 GRAPHIQUES)          -->
+                    <!-- ========================================================= -->
+                    <div class="row mt-4">
+                        <!-- Graphique 4 : Performance par Type -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(250, 208, 196, 0.15) 0%, rgba(255, 209, 255, 0.15) 100%);">
+                                <div class="card-header">Performance par Type (Long vs Short)</div>
+                                <div class="card-body d-flex flex-column justify-content-between">
+                                    <canvas id="longShortPnlChart" style="max-height: 150px;"></canvas>
+                                    <div id="longShortStatsDisplay" class="mt-3"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 5 : Gains vs Pertes Moyennes -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(250, 208, 196, 0.15) 0%, rgba(255, 209, 255, 0.15) 100%);">
+                                <div class="card-header">Gains vs. Pertes Moyennes</div>
+                                <div class="card-body d-flex flex-column justify-content-between">
+                                    <canvas id="avgWinLossChart" style="max-height: 150px;"></canvas>
+                                    <div id="avgWinLossStatsDisplay" class="mt-3 text-center"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 6 : Performance par Stratégie -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm"
+                                style="background: linear-gradient(135deg, rgba(250, 208, 196, 0.15) 0%, rgba(255, 209, 255, 0.15) 100%);">
+                                <div class="card-header py-3">
+                                    <h5 class="mb-0 card-title"><i class="bi bi-speedometer2 me-2"></i>Efficacité
+                                        par Mode</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="strategyPnlChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!--                  TROISIÈME RANGÉE (3 GRAPHIQUES)          -->
+                    <!-- ========================================================= -->
+                    <div class="row mt-4">
+                        <!-- Graphique 7 : Taux de Réussite par Règle -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm"
+                                style="background: linear-gradient(135deg, rgba(212, 252, 121, 0.15) 0%, rgba(150, 230, 161, 0.15) 100%);">
+                                <div class="card-header py-3">
+                                    <h5 class="mb-0 card-title"><i class="bi bi-check2-square me-2"></i>Performance par
+                                        Règle</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="min-height: 300px;">
+                                        <canvas id="confluenceRulesChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 8 : P/L en fonction de la Taille de la Position -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(212, 252, 121, 0.15) 0%, rgba(150, 230, 161, 0.15) 100%);">
+                                <div class="card-header">P/L en fonction du Capital Investi</div>
+                                <div class="card-body" style="height: 400px;">
+                                    <canvas id="pnlVsSizeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 9 : P/L en fonction de la Durée -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(212, 252, 121, 0.15) 0%, rgba(150, 230, 161, 0.15) 100%);">
+                                <div class="card-header">Performance Moyenne par Durée</div>
+                                <div class="card-body" style="height: 400px;">
+                                    <canvas id="pnlVsDurationChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!--                  QUATRIÈME RANGÉE (NOUVELLES STATS)       -->
+                    <!-- ========================================================= -->
+                    <div class="row mt-4">
+                        <!-- Graphique 10 : Raisons de Sortie -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(246, 211, 101, 0.15) 0%, rgba(253, 160, 133, 0.15) 100%);">
+                                <div class="card-header py-3">
+                                    <h5 class="mb-0 card-title"><i class="bi bi-door-open me-2"></i>Raisons
+                                        de Sortie</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="height: 300px;">
+                                        <canvas id="exitReasonChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 11 : Distribution du Respect du Plan -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(246, 211, 101, 0.15) 0%, rgba(253, 160, 133, 0.15) 100%);">
+                                <div class="card-header py-3">
+                                    <h5 class="mb-0 card-title"><i class="bi bi-star me-2"></i>Discipline
+                                        (Respect du Plan)</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="height: 300px;">
+                                        <canvas id="planAdherenceChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphique 12 : Impact de la Discipline sur le P/L -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow-sm h-100"
+                                style="background: linear-gradient(135deg, rgba(246, 211, 101, 0.15) 0%, rgba(253, 160, 133, 0.15) 100%);">
+                                <div class="card-header py-3">
+                                    <h5 class="mb-0 card-title"><i class="bi bi-cash-coin me-2"></i>Impact
+                                        Discipline sur P/L</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="height: 300px;">
+                                        <canvas id="pnlByAdherenceChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section id="account-management" class="content-section">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <div class="p-3 rounded-circle bg-gradient"
+                                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <i class="bi bi-wallet2 text-white" style="font-size: 2rem;"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h2 class="mb-0">💰 Gestion du Compte</h2>
+                                    <p class="text-muted mb-0">Gérez vos balances et transactions</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card shadow-sm border-0 mb-4"
+                                style="background: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%);">
+                                <div class="card-header border-0 bg-transparent">
+                                    <h5 class="mb-0 text-dark d-flex align-items-center fw-bold">
+                                        <i class="bi bi-bank me-2"></i>
+                                        Compte Titre suivi
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-light border-0 mb-3">
+                                        <small class="text-dark">Utilisez la liste dans la barre latérale pour basculer rapidement entre vos comptes. Vous pouvez aussi ajouter un nouveau compte ici.</small>
+                                    </div>
+
+                                    <form id="title-account-form" class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="newAccountNumber" class="form-label text-dark fw-bold">Numéro du compte</label>
+                                            <input type="text" id="newAccountNumber" class="form-control form-control-lg"
+                                                placeholder="Ex. U26469762"
+                                                style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95);" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="newAccountName" class="form-label text-dark fw-bold">Nom du compte</label>
+                                            <input type="text" id="newAccountName" class="form-control form-control-lg"
+                                                placeholder="Ex. Compte de swing trading"
+                                                style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95);" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary btn-lg">Ajouter ce compte</button>
+                                        </div>
+                                    </form>
+
+                                    <div class="mt-4 border-top pt-3">
+                                        <h6 class="fw-bold text-dark mb-2">Renommer un compte existant</h6>
+                                        <p class="small text-dark mb-3">Vous pouvez modifier le libellé affiché pour un compte déjà enregistré, y compris les comptes hérités.</p>
+                                        <form id="rename-account-form" class="row g-3 align-items-end">
+                                            <div class="col-md-5">
+                                                <label for="renameAccountSelect" class="form-label text-dark fw-bold">Compte</label>
+                                                <select id="renameAccountSelect" class="form-select form-select-lg" style="background: rgba(255,255,255,0.95); border: 2px solid rgba(255,255,255,0.3); color: #111827;">
+                                                    <option value="">Aucun compte</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label for="renameAccountName" class="form-label text-dark fw-bold">Nouveau nom</label>
+                                                <input type="text" id="renameAccountName" class="form-control form-control-lg"
+                                                    placeholder="Ex. Intraday"
+                                                    style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95);" required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <button type="submit" class="btn btn-outline-dark btn-lg w-100">Enregistrer</button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <p id="title-account-summary" class="small text-dark mt-3 mb-0">Compte suivi : Trading (U21752904)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Colonne de gauche : Balances et Formulaire -->
+                        <div class="col-lg-5">
+                            <!-- Affichage des Balances -->
+                            <div class="card shadow-lg mb-4 border-0"
+                                style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                                <div class="card-header border-0 bg-transparent">
+                                    <h5 class="mb-0 text-dark d-flex align-items-center fw-bold">
+                                        <i class="bi bi-cash-stack me-2"></i>
+                                        Balances par Devise
+                                    </h5>
+                                </div>
+                                <div class="card-body" id="balances-display">
+                                    <!-- Les balances seront insérées ici par JS avec un style amélioré -->
+                                    <div class="text-center py-4">
+                                        <i class="bi bi-piggy-bank"
+                                            style="font-size: 3rem; opacity: 0.4; color: #666;"></i>
+                                        <p class="text-muted mt-2">
+                                            Aucune transaction pour le moment.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Formulaire de Transaction -->
+                            <div class="card shadow-lg border-0"
+                                style="background: linear-gradient(135deg, #a7c5eb 0%, #c5e0f5 100%);">
+                                <div class="card-header border-0 bg-transparent">
+                                    <h5 class="mb-0 text-dark d-flex align-items-center fw-bold">
+                                        <i class="bi bi-plus-circle me-2"></i>
+                                        Nouvelle Transaction
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="account-form">
+                                        <input type="hidden" id="editingTransactionId">
+                                        <!-- Sélecteur de Type de Transaction -->
+                                        <div class="mb-3">
+                                            <label for="transactionType" class="form-label text-dark fw-bold">
+                                                <i class="bi bi-arrow-left-right me-1"></i>
+                                                Type de Transaction
+                                            </label>
+                                            <select class="form-select form-select-lg" id="transactionType" required
+                                                style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95); font-weight: 500;">
+                                                <option value="deposit">💵 Dépôt</option>
+                                                <option value="withdrawal">💸 Retrait</option>
+                                                <option value="conversion">🔄 Conversion de Devise</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Groupe de champs pour Dépôt / Retrait -->
+                                        <div id="deposit-withdrawal-group">
+                                            <div class="mb-3">
+                                                <label for="dw_date" class="form-label text-dark fw-bold">
+                                                    <i class="bi bi-calendar-event me-1"></i>
+                                                    Date
+                                                </label>
+                                                <input type="date" class="form-control form-control-lg" id="dw_date"
+                                                    style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95);">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="dw_amount" class="form-label text-dark fw-bold">
+                                                    <i class="bi bi-currency-exchange me-1"></i>
+                                                    Montant
+                                                </label>
+                                                <input type="number" class="form-control form-control-lg" id="dw_amount"
+                                                    step="0.01" placeholder="1000.00"
+                                                    style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95);">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="dw_currency" class="form-label text-dark fw-bold">
+                                                    <i class="bi bi-globe me-1"></i>
+                                                    Devise
+                                                </label>
+                                                <input type="text" class="form-control form-control-lg" id="dw_currency"
+                                                    placeholder="Ex: EUR, USD, CHF"
+                                                    style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95);">
+                                            </div>
+                                        </div>
+
+                                        <!-- Groupe de champs pour Conversion -->
+                                        <div id="conversion-group" class="d-none">
+                                            <div class="mb-3">
+                                                <label for="conv_date" class="form-label text-white fw-bold"
+                                                    style="text-shadow: 1px 1px 3px rgba(0,0,0,0.4);">
+                                                    <i class="bi bi-calendar-event me-1"></i>
+                                                    Date
+                                                </label>
+                                                <input type="date" class="form-control form-control-lg" id="conv_date"
+                                                    style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95);">
+                                            </div>
+                                            <div class="card mb-3 border-0" style="background: rgba(255,255,255,0.2);">
+                                                <div class="card-body">
+                                                    <h6 class="text-white"
+                                                        style="text-shadow: 1px 1px 3px rgba(0,0,0,0.4);"><i
+                                                            class="bi bi-box-arrow-up me-1"></i>De
+                                                        (Source)</h6>
+                                                    <div class="row g-2">
+                                                        <div class="col-6">
+                                                            <label for="conv_from_amount" class="text-white small"
+                                                                style="text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Montant</label>
+                                                            <input type="number" id="conv_from_amount"
+                                                                class="form-control" step="0.01"
+                                                                style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9);">
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label for="conv_from_currency" class="text-white small"
+                                                                style="text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Devise</label>
+                                                            <input type="text" id="conv_from_currency"
+                                                                class="form-control" placeholder="EUR"
+                                                                style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9);">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card mb-3 border-0" style="background: rgba(255,255,255,0.2);">
+                                                <div class="card-body">
+                                                    <h6 class="text-white"
+                                                        style="text-shadow: 1px 1px 3px rgba(0,0,0,0.4);"><i
+                                                            class="bi bi-box-arrow-down me-1"></i>Vers
+                                                        (Destination)</h6>
+                                                    <div class="row g-2">
+                                                        <div class="col-6">
+                                                            <label for="conv_to_currency" class="text-white small"
+                                                                style="text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Devise</label>
+                                                            <input type="text" id="conv_to_currency"
+                                                                class="form-control" placeholder="USD"
+                                                                style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9);">
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label for="conv_rate" class="text-white small"
+                                                                style="text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Taux
+                                                                de
+                                                                Change</label>
+                                                            <input type="number" id="conv_rate" class="form-control"
+                                                                step="0.00001" placeholder="1.07"
+                                                                style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9);">
+                                                        </div>
+                                                    </div>
+                                                    <div class="alert alert-light mt-2 mb-0">
+                                                        <small>Vous recevrez (approx.): <strong
+                                                                id="conv_to_amount_display">0.00</strong></small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex gap-2 mt-3">
+                                            <button type="submit" id="submit-transaction-btn" class="btn btn-light btn-lg flex-grow-1 shadow-sm"
+                                                style="font-weight: bold;">
+                                                <i class="bi bi-check-circle me-2"></i>
+                                                Enregistrer
+                                            </button>
+                                            <button type="button" id="cancel-transaction-edit-btn" class="btn btn-outline-light btn-lg d-none"
+                                                style="font-weight: bold;">
+                                                Annuler
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Colonne de droite : Historique -->
+                        <div class="col-lg-7 mt-4 mt-lg-0">
+                            <div class="card shadow-lg border-0"
+                                style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); min-height: 600px;">
+                                <div class="card-header border-0 bg-transparent">
+                                    <h5 class="mb-0 text-dark d-flex align-items-center fw-bold">
+                                        <i class="bi bi-clock-history me-2"></i>
+                                        Historique des Transactions
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+                                        <table class="table table-sm">
+                                            <thead
+                                                style="position: sticky; top: 0; background: rgba(255,255,255,0.95); z-index: 10;">
+                                                <tr>
+                                                    <th style="border-bottom: 2px solid rgba(255,255,255,0.5);"><i
+                                                            class="bi bi-calendar3 me-1"></i>Date</th>
+                                                    <th style="border-bottom: 2px solid rgba(255,255,255,0.5);"><i
+                                                            class="bi bi-arrow-left-right me-1"></i>Opération</th>
+                                                    <th style="border-bottom: 2px solid rgba(255,255,255,0.5);"><i
+                                                            class="bi bi-tools me-1"></i>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="transactions-history-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+        </div>
+    </div>
+    </main>
+    </div>
+    </div>
+
+    <!-- Modale de Gestion de Position -->
+    <div class="modal fade" id="positionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="positionModalLabel"></h5><button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- index.html -> à l'intérieur de la modale -->
+
+                    <form id="position-form">
+                        <!-- Champs cachés pour la logique interne -->
+                        <input type="hidden" id="positionId">
+                        <input type="hidden" id="formAction">
+
+                        <!-- SECTION 1 : PARAMÈTRES GÉNÉRAUX (Visible uniquement pour 'open') -->
+                        <div id="new-position-fields">
+                            <div class="card mb-3 bg-light">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title mb-2 text-primary"><i
+                                            class="bi bi-sliders me-2"></i>Paramètres Généraux</h6>
+                                    <div class="row g-2">
+                                        <!-- Groupe Actif -->
+                                        <div class="col-md-4" id="asset-group">
+                                            <label for="positionAsset" class="form-label small mb-1">Actif</label>
+                                            <input type="text" class="form-control form-control-sm" id="positionAsset"
+                                                required list="asset-list" placeholder="Ex: BTCUSD">
+                                            <datalist id="asset-list"></datalist>
+                                        </div>
+                                        <!-- Groupe Type -->
+                                        <div class="col-md-4" id="type-group">
+                                            <label for="positionType" class="form-label small mb-1">Type</label>
+                                            <select class="form-select form-select-sm" id="positionType" required>
+                                                <option value="long">Achat (Long)</option>
+                                                <option value="short">Vente (Short)</option>
+                                            </select>
+                                        </div>
+                                        <!-- Groupe Devise -->
+                                        <div class="col-md-4" id="currency-group">
+                                            <label for="positionCurrency" class="form-label small mb-1">Devise</label>
+                                            <input type="text" class="form-control form-control-sm"
+                                                id="positionCurrency" placeholder="Ex: EUR" required
+                                                list="currency-list">
+                                            <datalist id="currency-list"></datalist>
+                                        </div>
+                                    </div>
+                                    <!-- Groupe RSI -->
+                                    <div class="row g-2 mt-2">
+                                        <div class="col-md-4" id="rsi-group">
+                                            <label for="positionRsi" class="form-label small mb-1">RSI</label>
+                                            <input type="number" class="form-control form-control-sm" id="positionRsi"
+                                                placeholder="Ex: 45.5" min="0" max="100" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION CONFLUENCES -->
+                            <div class="card mb-3" id="confluences-group">
+                                <div class="card-header py-2 bg-white">
+                                    <h6 class="mb-0 text-primary"><i class="bi bi-check2-all me-2"></i>Confluences &
+                                        Validation</h6>
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input confluence-check" type="checkbox"
+                                                    value="Tendance H4" id="conf_trend">
+                                                <label class="form-check-label" for="conf_trend">Tendance H4</label>
+                                            </div>
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input confluence-check" type="checkbox"
+                                                    value="Contre-tendance" id="conf_counter_trend">
+                                                <label class="form-check-label"
+                                                    for="conf_counter_trend">Contre-tendance</label>
+                                            </div>
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input confluence-check" type="checkbox"
+                                                    value="Trading de Range" id="conf_range">
+                                                <label class="form-check-label" for="conf_range">Trading de
+                                                    Range</label>
+                                            </div>
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input confluence-check" type="checkbox"
+                                                    value="Support/Résistance" id="conf_sr_new">
+                                                <label class="form-check-label" for="conf_sr_new">Vente Résist. / Achat
+                                                    Supp.</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input confluence-check" type="checkbox"
+                                                    value="Retour sur FVG" id="conf_fvg">
+                                                <label class="form-check-label" for="conf_fvg">Retour sur FVG</label>
+                                            </div>
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input confluence-check" type="checkbox"
+                                                    value="Fibonacci 0.5/0.618" id="conf_fib">
+                                                <label class="form-check-label" for="conf_fib">Zone Fib 0.5 /
+                                                    0.618</label>
+                                            </div>
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input confluence-check" type="checkbox"
+                                                    value="Mean Reversion" id="conf_mean_reversion">
+                                                <label class="form-check-label" for="conf_mean_reversion">Mean Reversion</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 2 : DÉTAILS DE LA TRANSACTION (Toujours visible) -->
+                        <div class="card mb-3 border-primary">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-2 text-primary" id="transaction-title"><i
+                                        class="bi bi-cash-stack me-2"></i>Détails de l'Opération</h6>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label for="transactionDate" class="form-label small mb-1">Date & Heure</label>
+                                        <input type="datetime-local" class="form-control form-control-sm"
+                                            id="transactionDate" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="transactionQuantity" class="form-label small mb-1">Quantité</label>
+                                        <input type="number" class="form-control form-control-sm"
+                                            id="transactionQuantity" step="any" placeholder="Ex: 0.5" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="transactionPrice" class="form-label small mb-1">Prix</label>
+                                        <input type="number" class="form-control form-control-sm" id="transactionPrice"
+                                            step="any" placeholder="Ex: 430.50" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 3 : NOTES (Visible uniquement pour 'open') -->
+                        <div class="mb-3" id="notes-group">
+                            <label for="positionNotes" class="form-label small fw-bold"><i
+                                    class="bi bi-journal-text me-2"></i>Notes avant trade</label>
+                            <textarea class="form-control form-control-sm" id="positionNotes" rows="2"
+                                placeholder="Plan, analyse, pourquoi ce trade..."></textarea>
+                        </div>
+
+                        <!-- SECTION 4 : CLÔTURE (Visible uniquement pour 'close') -->
+                        <div id="close-only-fields" style="display: none;">
+                            <div class="card bg-light border-warning">
+                                <div class="card-header py-2 bg-warning bg-opacity-10 text-warning-emphasis">
+                                    <h6 class="mb-0"><i class="bi bi-flag me-2"></i>Rapport de Clôture</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <!-- Raison de sortie -->
+                                        <div class="col-md-6">
+                                            <label for="exitReason" class="form-label small fw-bold">🎯 Raison de
+                                                sortie</label>
+                                            <select class="form-select form-select-sm" id="exitReason">
+                                                <option value="">-- Sélectionner --</option>
+                                                <option value="target">✅ Target atteint</option>
+                                                <option value="stop_loss">❌ Stop Loss touché</option>
+                                                <option value="manual_plan">🖐️ Sortie manuelle (selon plan)</option>
+                                                <option value="manual_emotional">😰 Sortie émotionnelle (hors plan)
+                                                </option>
+                                                <option value="time_based">⏰ Sortie temporelle</option>
+                                                <option value="breakeven">🔄 Breakeven / Sécurisation</option>
+                                                <option value="other">💭 Autre raison</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Score -->
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">⭐ Respect du plan</label>
+                                            <div class="star-rating justify-content-start" id="star-rating-container">
+                                                <input type="radio" name="planAdherence" id="star5" value="5"><label
+                                                    for="star5">★</label>
+                                                <input type="radio" name="planAdherence" id="star4" value="4"><label
+                                                    for="star4">★</label>
+                                                <input type="radio" name="planAdherence" id="star3" value="3"><label
+                                                    for="star3">★</label>
+                                                <input type="radio" name="planAdherence" id="star2" value="2"><label
+                                                    for="star2">★</label>
+                                                <input type="radio" name="planAdherence" id="star1" value="1"><label
+                                                    for="star1">★</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Notes après trade -->
+                                        <div class="col-12">
+                                            <label for="postTradeNotes" class="form-label small fw-bold">📋 Bilan /
+                                                Leçons</label>
+                                            <textarea class="form-control form-control-sm" id="postTradeNotes" rows="2"
+                                                placeholder="Analyse post-trade..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Annuler</button><button type="button" class="btn btn-primary"
+                        id="save-position-btn">Enregistrer</button></div>
+            </div>
+        </div>
+    </div>
+    <!-- Modale de Gestion des Stratégies -->
+    <div class="modal fade" id="strategyModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Gestion des Stratégies</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Colonne du formulaire -->
+                        <div class="col-md-5">
+                            <h6 id="strategy-form-title">Ajouter une nouvelle stratégie</h6>
+                            <form id="strategy-form">
+                                <input type="hidden" id="strategyId">
+                                <div class="mb-3">
+                                    <label for="strategyTitle" class="form-label">Titre</label>
+                                    <input type="text" class="form-control" id="strategyTitle"
+                                        placeholder="Ex: Retour sur FVG" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="strategyDetails" class="form-label">Détails</label>
+                                    <textarea class="form-control" id="strategyDetails" rows="4"
+                                        placeholder="Description de la stratégie..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary"
+                                    id="save-strategy-btn">Enregistrer</button>
+                                <button type="button" class="btn btn-secondary" id="cancel-edit-strategy-btn"
+                                    style="display: none;">Annuler</button>
+                            </form>
+                        </div>
+                        <!-- Colonne de la liste -->
+                        <div class="col-md-7">
+                            <h6>Stratégies existantes</h6>
+                            <div class="list-group" id="strategy-list">
+                                <!-- La liste sera remplie par JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modale d'Édition de Position -->
+    <div class="modal fade" id="editPositionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editPositionModalTitle">Modifier la Position</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Paramètres Généraux -->
+                    <div class="card mb-3 bg-light">
+                        <div class="card-body py-2">
+                            <h6 class="card-title mb-2">Paramètres Généraux</h6>
+                            <form id="edit-position-global-form">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-3">
+                                        <label for="editGlobalAsset" class="form-label small mb-1">Actif</label>
+                                        <input type="text" class="form-control form-control-sm" id="editGlobalAsset"
+                                            required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="editGlobalType" class="form-label small mb-1">Type</label>
+                                        <select class="form-select form-select-sm" id="editGlobalType" required>
+                                            <option value="long">Long</option>
+                                            <option value="short">Short</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="editGlobalCurrency" class="form-label small mb-1">Devise</label>
+                                        <input type="text" class="form-control form-control-sm" id="editGlobalCurrency"
+                                            required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">Mettre à
+                                            jour</button>
+                                    </div>
+                                </div>
+                                <div class="row g-2 mt-2">
+                                    <div class="col-12">
+                                        <h6 class="card-title mb-2"><i class="bi bi-check2-all me-2"></i>Confluences & Validation</h6>
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input edit-confluence-check" type="checkbox"
+                                                        value="Tendance H4" id="edit_conf_trend">
+                                                    <label class="form-check-label" for="edit_conf_trend">Tendance H4</label>
+                                                </div>
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input edit-confluence-check" type="checkbox"
+                                                        value="Contre-tendance" id="edit_conf_counter_trend">
+                                                    <label class="form-check-label"
+                                                        for="edit_conf_counter_trend">Contre-tendance</label>
+                                                </div>
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input edit-confluence-check" type="checkbox"
+                                                        value="Trading de Range" id="edit_conf_range">
+                                                    <label class="form-check-label" for="edit_conf_range">Trading de Range</label>
+                                                </div>
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input edit-confluence-check" type="checkbox"
+                                                        value="Support/Résistance" id="edit_conf_sr_new">
+                                                    <label class="form-check-label" for="edit_conf_sr_new">Vente Résist. / Achat Supp.</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input edit-confluence-check" type="checkbox"
+                                                        value="Retour sur FVG" id="edit_conf_fvg">
+                                                    <label class="form-check-label" for="edit_conf_fvg">Retour sur FVG</label>
+                                                </div>
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input edit-confluence-check" type="checkbox"
+                                                        value="Fibonacci 0.5/0.618" id="edit_conf_fib">
+                                                    <label class="form-check-label" for="edit_conf_fib">Zone Fib 0.5 / 0.618</label>
+                                                </div>
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input edit-confluence-check" type="checkbox"
+                                                        value="Mean Reversion" id="edit_conf_mean_reversion">
+                                                    <label class="form-check-label" for="edit_conf_mean_reversion">Mean Reversion</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <h6>Transactions d'Entrée</h6>
+                    <p class="text-muted small">Cliquez sur une transaction pour la modifier.</p>
+
+                    <div id="entries-list" class="list-group mb-4">
+                        <!-- Liste des entrées générée par JS -->
+                    </div>
+
+                    <h6>Transactions de Sortie</h6>
+                    <div id="exits-list" class="list-group mb-4">
+                        <!-- Liste des sorties générée par JS -->
+                    </div>
+
+                    <hr>
+                    <h6 id="edit-entry-form-title" style="display: none;">Modifier la transaction</h6>
+                    <form id="edit-entry-form" style="display: none;">
+                        <input type="hidden" id="editPositionId">
+                        <input type="hidden" id="editEntryIndex">
+                        <input type="hidden" id="editTransactionType"> <!-- 'entry' ou 'exit' -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-12">
+                                <label for="editEntryDate" class="form-label small mb-1">Date & Heure</label>
+                                <input type="datetime-local" class="form-control form-control-sm" id="editEntryDate"
+                                    required>
+                            </div>
+                            <div class="col-6">
+                                <label for="editEntryQuantity" class="form-label small mb-1">Quantité</label>
+                                <input type="number" class="form-control form-control-sm" id="editEntryQuantity"
+                                    step="any" required>
+                            </div>
+                            <div class="col-6">
+                                <label for="editEntryPrice" class="form-label small mb-1">Prix</label>
+                                <input type="number" class="form-control form-control-sm" id="editEntryPrice" step="any"
+                                    required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enregistrer les changements</button>
+                        <button type="button" class="btn btn-secondary" id="cancel-entry-edit-btn">Annuler</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!--          1. CHARGER LES LIBRAIRIES EXTERNES (OUTILS)      -->
+    <!-- ========================================================= -->
+
+    <!-- Bootstrap (pour les modales, etc.) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Chart.js et ses plugins (L'ORDRE EST IMPORTANT ICI) -->
+    <!-- a) La librairie principale Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- b) L'adaptateur pour que Chart.js comprenne les dates -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- c) Le plugin de zoom et ses dépendances -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+
+    <!-- Autres outils (Notifications) -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- ========================================================= -->
+    <!--          2. CHARGER VOTRE PROPRE CODE D'APPLICATION         -->
+    <!-- ========================================================= -->
+
+    <!-- Votre code doit toujours être chargé en dernier -->
+    <script type="module" src="firebase-config.js?v=2"></script>
+    <script type="module" src="app.js?v=2"></script>
+
+</body>
+
+</html>
