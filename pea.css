@@ -310,6 +310,61 @@ body.light-mode .glass-modal .form-select {
     color: white;
 }
 
+#total-gains-percent,
+#total-pnl-percent {
+    font-weight: 700 !important;
+}
+
+body.dark-mode #holdings-table.table.table-dark tbody tr:nth-child(odd) td {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode #holdings-table.table.table-dark tbody tr:nth-child(even) td {
+    background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.light-mode #holdings-table.table.table-dark tbody tr:nth-child(odd) td {
+    background-color: #ffffff !important;
+}
+
+body.light-mode #holdings-table.table.table-dark tbody tr:nth-child(even) td {
+    background-color: #f2f4f7 !important;
+}
+
+#holdings-table.table.table-dark.table-hover tbody tr:hover > *,
+#asset-performance-table.table.table-dark.table-hover tbody tr:hover > *,
+#history-table.table.table-dark.table-hover tbody tr:hover > *,
+.table-hover.table-dark tbody tr:hover > * {
+    background-color: rgba(180, 132, 34, 0.45) !important;
+    color: inherit !important;
+}
+
+body.dark-mode #asset-performance-table.table.table-dark tbody tr:nth-child(odd) td {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode #asset-performance-table.table.table-dark tbody tr:nth-child(even) td {
+    background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.light-mode #asset-performance-table.table.table-dark tbody tr:nth-child(odd) td {
+    background-color: #ffffff !important;
+}
+
+body.light-mode #asset-performance-table.table.table-dark tbody tr:nth-child(even) td {
+    background-color: #f2f4f7 !important;
+}
+
+body.dark-mode #holdings-table.table.table-dark.table-hover tbody tr:hover > *,
+body.dark-mode #asset-performance-table.table.table-dark.table-hover tbody tr:hover > *,
+body.dark-mode #history-table.table.table-dark.table-hover tbody tr:hover > *,
+body.light-mode #holdings-table.table.table-dark.table-hover tbody tr:hover > *,
+body.light-mode #asset-performance-table.table.table-dark.table-hover tbody tr:hover > *,
+body.light-mode #history-table.table.table-dark.table-hover tbody tr:hover > * {
+    background-color: rgba(180, 132, 34, 0.45) !important;
+    color: inherit !important;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

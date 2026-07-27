@@ -136,7 +136,8 @@
                                 <div class="kpi-content">
                                     <span class="kpi-label">Total des Gains</span>
                                     <h3 class="kpi-value text-success" id="total-gains">-- €</h3>
-                                    <small class="text-success" id="total-gains-percent">-- %</small>
+                                    <small class="text-success fw-bold" id="total-gains-percent">-- %</small>
+                                    <small class="text-white-50 d-block mt-1" id="total-gains-latent">--</small>
                                 </div>
                             </div>
                         </div>
@@ -146,7 +147,7 @@
                                 <div class="kpi-content">
                                     <span class="kpi-label">Plus-Value Latente</span>
                                     <h3 class="kpi-value text-success" id="total-pnl">-- €</h3>
-                                    <small class="text-success" id="total-pnl-percent">-- %</small>
+                                    <small class="text-success fw-bold" id="total-pnl-percent">-- %</small>
                                 </div>
                             </div>
                         </div>
@@ -191,11 +192,13 @@
                                                 <th class="text-end sortable" data-sort="quantity" style="cursor: pointer;">Qté <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="pru" style="cursor: pointer;">PRU <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="price" style="cursor: pointer;">Cours <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-end sortable" data-sort="targetPrice1Y" style="cursor: pointer;">Objectif 1 an <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="positionAmount" style="cursor: pointer;">Coût position <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="value" style="cursor: pointer;">Val. Totale <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="fees" style="cursor: pointer;">Frais <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="ttf" style="cursor: pointer;">TTF <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="pnl" style="cursor: pointer;">+/- Value <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="pnlPercent" style="cursor: pointer;">+/- Value (%) <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-end sortable" data-sort="pnlCapitalPercent" style="cursor: pointer;">P/L % capital versé <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="pnlCapitalPercent" style="cursor: pointer;">P/L % global <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end pe-4">Actions</th>
                                             </tr>
                                         </thead>
@@ -211,7 +214,9 @@
 
                             <div class="card glass-panel border-0 mt-4">
                                 <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <h6 class="mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Performance par action</h6>
+                                    <button class="btn btn-link text-decoration-none text-reset p-0" id="asset-performance-toggle" style="text-align: left; flex: 1;">
+                                        <h6 class="mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Performance par action <i class="bi bi-chevron-right me-2" id="asset-performance-chevron" style="transition: transform 0.3s;"></i></h6>
+                                    </button>
                                     <div class="d-flex align-items-center gap-2">
                                         <select id="asset-performance-status-filter" class="form-select form-select-sm bg-dark text-white border-secondary" style="min-width: 150px;">
                                             <option value="all">Toutes</option>
@@ -221,14 +226,15 @@
                                         <small class="text-white-50">Barres de P/L % sur capital versé</small>
                                     </div>
                                 </div>
-                                <div class="card-body p-0 table-responsive">
-                                    <table id="asset-performance-table" class="table table-dark table-sm table-condensed mb-0 align-middle">
+                                <div class="card-body p-0 table-responsive" id="asset-performance-content" style="display: none;">
+                                    <table id="asset-performance-table" class="table table-dark table-hover mb-0 align-middle">
                                         <thead class="text-secondary small text-uppercase">
                                             <tr>
                                                 <th class="ps-4 sortable" data-sort="asset" style="cursor: pointer;">Action <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-center sortable" data-sort="status" style="cursor: pointer;">Statut <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-center">Note</th>
                                                 <th class="text-center">Technique</th>
+                                                <th class="text-end sortable" data-sort="targetPrice1Y" style="cursor: pointer;">Objectif 1 an <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="weight" style="cursor: pointer;">Poids <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="pnl" style="cursor: pointer;">P/L % <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end pe-4">Barre</th>
@@ -296,7 +302,35 @@
                                     </div>
                                 </div>
                                 <div class="card-body">
-                                    <canvas id="portfolioGrowthChart" height="300"></canvas>
+                                    <div class="row gx-2 gy-3 mb-4">
+                                        <div class="col-6 col-md-3">
+                                            <div class="bg-dark rounded-3 p-3 h-100">
+                                                <small class="text-white-50">Valeur du portefeuille brut</small>
+                                                <div class="h4 mb-0 text-secondary" id="portfolio-gross-value">-- €</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="bg-dark rounded-3 p-3 h-100">
+                                                <small class="text-white-50">Valeur du portefeuille</small>
+                                                <div class="h4 mb-0 text-warning" id="portfolio-capital-value">-- €</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="bg-dark rounded-3 p-3 h-100">
+                                                <small class="text-white-50">Coût d'achat total</small>
+                                                <div class="h4 mb-0 text-info" id="portfolio-invested-value">-- €</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="bg-dark rounded-3 p-3 h-100">
+                                                <small class="text-white-50">Cash restant</small>
+                                                <div class="h4 mb-0 text-success" id="portfolio-remaining-value">-- €</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="position-relative" style="height: 320px;">
+                                        <canvas id="portfolioGrowthChart" style="width:100%; height:100%;"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -384,10 +418,10 @@
                                                 <th class="sortable" data-sort="asset" style="cursor: pointer;">Actif <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="quantity" style="cursor: pointer;">Qté <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="price" style="cursor: pointer;">Prix <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-end sortable" data-sort="amount" style="cursor: pointer;">Montant position <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
+                                                <th class="text-end sortable" data-sort="amount" style="cursor: pointer;">Coût position <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="pnl" style="cursor: pointer;">Total <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="yield" style="cursor: pointer;">Rendement <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-end">P/L % capital versé</th>
+                                                <th class="text-end">P/L % global</th>
                                                 <th class="text-end">Frais</th>
                                                 <th class="text-end">TTF</th>
                                                 <th class="text-center">Actions</th>

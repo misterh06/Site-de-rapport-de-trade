@@ -1019,34 +1019,40 @@ function recalculatePortfolio() {
 
             const line = holdings[op.asset];
 
-            // Nouveau PRU réel (frais d'achat inclus)
+            // Nouveau PRU sans frais
             const newTotalQty = line.qty + qty;
             const oldVal = line.qty * line.pru;
-            const newVal = qty * price + totalFees; // frais + TTF intégrés au coût
+            const newVal = qty * price; // montant brut sans frais
 
             if (newTotalQty > 0) {
                 line.pru = (oldVal + newVal) / newTotalQty;
             }
             line.qty = newTotalQty;
-            line.totalCost += (totalAmount + totalFees); // Coût comptable réel
+            line.totalCost += (totalAmount + totalFees); // Coût comptable réel, frais inclus
             line.currentPrice = price;
             if (op.targetPrice1Y !== null && op.targetPrice1Y !== undefined && op.targetPrice1Y !== '') {
                 line.targetPrice1Y = parseFloat(op.targetPrice1Y);
             }
         }
         else if (op.type === 'sell') {
-            const netProceeds = totalAmount - totalFees;
-            cash += netProceeds;
-
             if (holdings[op.asset]) {
-                const pru = holdings[op.asset].pru;
-                const pnl = netProceeds - (qty * pru);
+                const line = holdings[op.asset];
+                const avgCostPerShare = line.qty > 0 ? (line.totalCost / line.qty) : line.pru;
+                const soldCostBasis = avgCostPerShare * qty;
+                const netProceeds = totalAmount - totalFees;
+                cash += netProceeds;
+
+                const pnl = netProceeds - soldCostBasis;
                 realizedPnL += pnl;
 
-                holdings[op.asset].qty -= qty;
-                if (holdings[op.asset].qty <= 0.0001) {
+                line.qty -= qty;
+                line.totalCost = Math.max(0, line.totalCost - soldCostBasis);
+                if (line.qty <= 0.0001) {
                     delete holdings[op.asset]; // Ligne fermée
                 }
+            } else {
+                const netProceeds = totalAmount - totalFees;
+                cash += netProceeds;
             }
         }
         else if (op.type === 'dividend') {
@@ -1069,7 +1075,8 @@ function recalculatePortfolio() {
         });
     }
 
-    state.portfolio = { cash, invested, dividendsYear, realizedPnL, holdings };
+    const totalCostBasis = Object.values(holdings).reduce((sum, h) => sum + (h.totalCost || ((h.qty || 0) * (h.pru || 0))), 0);
+    state.portfolio = { cash, invested, dividendsYear, realizedPnL, holdings, costBasis: totalCostBasis };
 }
 
 
@@ -1085,12 +1092,13 @@ function updateUI() {
     // Préparer liste pour tableau
     const holdingsList = Object.entries(p.holdings).map(([name, data]) => {
         const val = data.qty * data.currentPrice;
+        const costBasis = data.totalCost || (data.qty * data.pru);
         holdingsValue += val;
 
-        const pnl = val - (data.qty * data.pru);
+        const pnl = val - costBasis;
         totalPnl += pnl;
 
-        return { ...data, value: val, pnl: pnl };
+        return { ...data, value: val, pnl: pnl, costBasis };
     });
 
     console.log("Holdings à afficher :", holdingsList); // DEBUG
@@ -1186,6 +1194,13 @@ function updateUI() {
         totalGainsPercentEl.className = totalGains >= 0 ? 'text-success' : 'text-danger';
     }
 
+    if (document.getElementById('total-gains-latent')) {
+        const totalGainsLatentEl = document.getElementById('total-gains-latent');
+        const totalGainsIncludingLatent = totalGains + totalPnl;
+        totalGainsLatentEl.textContent = `${totalGainsIncludingLatent >= 0 ? '+' : ''}${formatCurrency(totalGainsIncludingLatent)} (gains + latent)`;
+        totalGainsLatentEl.className = `d-block mt-1 ${totalGainsIncludingLatent >= 0 ? 'text-success' : 'text-danger'}`;
+    }
+
     if (document.getElementById('yield-on-cost')) {
         const yieldVal = p.invested > 0 ? (p.dividendsYear / p.invested) * 100 : 0;
         document.getElementById('yield-on-cost').textContent = yieldVal.toFixed(2) + '%';
@@ -1219,6 +1234,10 @@ function sortAssetPerformanceRows(rows) {
             case 'weight':
                 valueA = a.weight || 0;
                 valueB = b.weight || 0;
+                break;
+            case 'targetPrice1Y':
+                valueA = a.targetPrice1Y || 0;
+                valueB = b.targetPrice1Y || 0;
                 break;
             case 'pnl':
             default:
@@ -1302,6 +1321,7 @@ function renderAssetPerformanceTable(holdingsList, totalPortfolio) {
                 pnlPercent: metrics.totalEntryVal > 0 ? (metrics.pnl / metrics.totalEntryVal) * 100 : 0,
                 analystNote,
                 technicalData,
+                targetPrice1Y: latestBuy?.targetPrice1Y || null,
             };
         });
 
@@ -1331,10 +1351,7 @@ function renderAssetPerformanceTable(holdingsList, totalPortfolio) {
                 <td class="ps-4">
                     <div class="d-flex align-items-center gap-2">
                         <span class="symbol-badge bg-secondary">${(item.name || 'AC').substring(0, 2).toUpperCase()}</span>
-                        <div>
-                            <div class="fw-semibold">${item.name}</div>
-                            <small class="text-white-50">${item.ticker || ''}</small>
-                        </div>
+                        <div class="fw-semibold">${item.name}</div>
                     </div>
                 </td>
                 <td class="text-center">
@@ -1346,6 +1363,7 @@ function renderAssetPerformanceTable(holdingsList, totalPortfolio) {
                 <td class="text-center">
                     <span class="badge ${item.technicalData ? getRatingBadgeClass(item.technicalData) : 'bg-secondary'}">${item.technicalData ? formatRatingLabel(item.technicalData) : '—'}</span>
                 </td>
+                <td class="text-end">${item.targetPrice1Y != null ? `${item.targetPrice1Y.toFixed(2)} €` : '—'}</td>
                 <td class="text-end text-white-50">${item.status === 'closed' ? '0.0%' : weight.toFixed(1) + '%'}</td>
                 <td class="text-end fw-semibold ${item.pnlCapitalPercent >= 0 ? 'text-success' : 'text-danger'}">${item.pnlCapitalPercent >= 0 ? '+' : ''}${item.pnlCapitalPercent.toFixed(2)}%</td>
                 <td class="text-end pe-4">
@@ -1443,7 +1461,7 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
     }
 
     if (holdingsList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">Aucune ligne en portefeuille. Ajoutez une opération !</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Aucune ligne en portefeuille. Ajoutez une opération !</td></tr>';
     } else {
         const sortedHoldings = sortHoldingsRows(holdingsList);
         const positions = groupOperationsIntoPositions(state.operations);
@@ -1469,25 +1487,36 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
                 ? ((item.targetPrice1Y - item.pru) / item.pru) * 100
                 : null;
 
+            let holdingFees = 0;
+            let holdingTtf = 0;
+            if (position) {
+                const totalEntryQty = position.entries.reduce((sum, e) => sum + (parseFloat(e.quantity) || 0), 0);
+                const totalEntryFees = position.entries.reduce((sum, e) => sum + (parseFloat(e.fees) || 0), 0);
+                const totalEntryTtf = position.entries.reduce((sum, e) => sum + getOperationTtf(e), 0);
+                const remainingQty = item.qty;
+                const feesPerShare = totalEntryQty > 0 ? totalEntryFees / totalEntryQty : 0;
+                const ttfPerShare = totalEntryQty > 0 ? totalEntryTtf / totalEntryQty : 0;
+                holdingFees = feesPerShare * remainingQty;
+                holdingTtf = ttfPerShare * remainingQty;
+            }
+            item.holdingFees = holdingFees;
+            item.holdingTtf = holdingTtf;
+
             tr.innerHTML = `
                 <td class="ps-4">
                     <div class="d-flex align-items-center">
                         <div class="symbol-badge bg-secondary me-2">${item.name.substring(0, 2).toUpperCase()}</div>
-                        <div>
-                            <div class="fw-bold">${item.name}</div>
-                            <small class="text-muted" style="font-size: 0.7em">${tickerSafe}</small>
-                        </div>
+                        <div class="fw-bold">${item.name}</div>
                     </div>
                 </td>
                 <td><span class="badge bg-secondary opacity-50">Action</span></td>
                 <td class="text-end font-monospace">${item.qty.toFixed(2)}</td>
                 <td class="text-end font-monospace">${item.pru.toFixed(2)} €</td>
                 <td class="text-end font-monospace text-info">${item.currentPrice.toFixed(2)} €</td>
-                <td class="text-end font-monospace">
-                    ${item.targetPrice1Y != null ? `${item.targetPrice1Y.toFixed(2)} €` : '—'}
-                    ${targetGainPercent != null ? `<div class="small ${targetGainPercent >= 0 ? 'text-success' : 'text-danger'}">${targetGainPercent >= 0 ? '+' : ''}${targetGainPercent.toFixed(2)}%</div>` : ''}
-                </td>
+                <td class="text-end font-monospace">${formatCurrency(item.costBasis)}</td>
                 <td class="text-end fw-bold">${formatCurrency(item.value)}</td>
+                <td class="text-end font-monospace text-white-50">${formatCurrency(holdingFees)}</td>
+                <td class="text-end font-monospace text-white-50">${formatCurrency(holdingTtf)}</td>
                 <td class="text-end ${item.pnl >= 0 ? 'text-success' : 'text-danger'}">
                     ${item.pnl >= 0 ? '+' : ''}${formatCurrency(item.pnl)}
                 </td>
@@ -1535,12 +1564,16 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
         let totalValue = 0;
         let totalPnl = 0;
         let totalCostBasis = 0;
+        let totalFees = 0;
+        let totalTtf = 0;
 
         holdingsList.forEach(item => {
             totalQty += item.qty;
             totalValue += item.value;
             totalPnl += item.pnl;
-            totalCostBasis += item.qty * item.pru;
+            totalCostBasis += item.costBasis || (item.qty * item.pru);
+            if (item.holdingFees) totalFees += item.holdingFees;
+            if (item.holdingTtf) totalTtf += item.holdingTtf;
         });
 
         const totalPnlPercent = totalCostBasis > 0 ? (totalPnl / totalCostBasis) * 100 : 0;
@@ -1555,8 +1588,10 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
                     <td class="text-end font-monospace fw-bold text-white">${totalQty.toFixed(2)}</td>
                     <td class="text-end font-monospace text-muted">—</td>
                     <td class="text-end font-monospace text-muted">—</td>
-                    <td class="text-end font-monospace text-muted">—</td>
+                    <td class="text-end font-monospace fw-bold text-white">${formatCurrency(totalCostBasis)}</td>
                     <td class="text-end fw-bold text-white">${formatCurrency(totalValue)}</td>
+                    <td class="text-end font-monospace fw-bold text-white">${formatCurrency(totalFees)}</td>
+                    <td class="text-end font-monospace fw-bold text-white">${formatCurrency(totalTtf)}</td>
                     <td class="text-end fw-bold ${totalPnl >= 0 ? 'text-success' : 'text-danger'}">
                         ${totalPnl >= 0 ? '+' : ''}${formatCurrency(totalPnl)}
                     </td>
@@ -1968,7 +2003,7 @@ function renderHistoryTable() {
             const pnlPercentText = `<span class="${pnlColor} fw-bold">${pnlPercent >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%</span>`;
             const investedBase = state.portfolio?.invested || 0;
             const pnlCapitalPercent = investedBase > 0 ? (metrics.pnl / investedBase) * 100 : 0;
-            const positionValue = metrics.totalEntryQty * metrics.averageEntryPrice;
+            const positionValue = metrics.totalEntryVal; // Entrée brute sans frais
             const feesOnly = metrics.feesOnly || 0;
             const ttfOnly = metrics.ttfOnly || 0;
 
@@ -2139,6 +2174,19 @@ if (assetPerformanceStatusFilterSelect) {
     assetPerformanceStatusFilterSelect.addEventListener('change', () => {
         recalculatePortfolio();
         updateUI();
+    });
+}
+
+// Accordéon pour le tableau Performance par action
+const assetPerformanceToggle = document.getElementById('asset-performance-toggle');
+const assetPerformanceContent = document.getElementById('asset-performance-content');
+const assetPerformanceChevron = document.getElementById('asset-performance-chevron');
+
+if (assetPerformanceToggle && assetPerformanceContent) {
+    assetPerformanceToggle.addEventListener('click', () => {
+        const isVisible = assetPerformanceContent.style.display !== 'none';
+        assetPerformanceContent.style.display = isVisible ? 'none' : '';
+        assetPerformanceChevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
     });
 }
 
@@ -2514,22 +2562,21 @@ function renderPnlEvolutionChart() {
         if (charts.pnlEvolution) charts.pnlEvolution.destroy();
 
         if (['daily', 'weekly', 'monthly', 'yearly'].includes(viewMode)) {
-            const groupedMap = {};
+            const grossMap = {};
+            const feesMap = {};
+            const transactionFeesMap = {};
+            const ttfMap = {};
             const groupOrder = [];
-            const pruMap = {};
+            const closedPositions = groupOperationsIntoPositions(state.operations).filter(pos => pos.status === 'closed');
 
-            ops.forEach(op => {
-                const qty = parseFloat(op.quantity) || 0;
-                const price = parseFloat(op.price) || 0;
-                const fees = parseFloat(op.fees) || 0;
-                
-                let key;
+            function getGroupKey(date) {
+                if (!date) return null;
                 if (viewMode === 'daily') {
-                    key = `${op._date.getFullYear()}-${String(op._date.getMonth() + 1).padStart(2, '0')}-${String(op._date.getDate()).padStart(2, '0')}`;
-                } else if (viewMode === 'weekly') {
-                    // Calcul du numéro de semaine ISO de manière simple
-                    const target = new Date(op._date.valueOf());
-                    const dayNr = (op._date.getDay() + 6) % 7;
+                    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                }
+                if (viewMode === 'weekly') {
+                    const target = new Date(date.valueOf());
+                    const dayNr = (date.getDay() + 6) % 7;
                     target.setDate(target.getDate() - dayNr + 3);
                     const firstThursday = target.valueOf();
                     target.setMonth(0, 1);
@@ -2537,33 +2584,49 @@ function renderPnlEvolutionChart() {
                         target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
                     }
                     const weekNum = 1 + Math.ceil((firstThursday - target) / 604800000);
-                    key = `${op._date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-                } else if (viewMode === 'monthly') {
-                    key = `${op._date.getFullYear()}-${String(op._date.getMonth() + 1).padStart(2, '0')}`;
-                } else if (viewMode === 'yearly') {
-                    key = `${op._date.getFullYear()}`;
+                    return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+                }
+                if (viewMode === 'monthly') {
+                    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                }
+                return `${date.getFullYear()}`;
+            }
+
+            function addToGroup(map, key, value) {
+                if (!Object.prototype.hasOwnProperty.call(map, key)) {
+                    map[key] = 0;
+                    if (!groupOrder.includes(key)) groupOrder.push(key);
+                }
+                map[key] += value;
+            }
+
+            closedPositions.forEach(position => {
+                const closeDate = parseOpDate({ date: position.closeDate || position.date });
+                if (!closeDate) return;
+                if (periodMode !== 'all') {
+                    const now = new Date();
+                    const cutoff = new Date(now);
+                    if (periodMode === '1m') cutoff.setMonth(now.getMonth() - 1);
+                    else if (periodMode === '3m') cutoff.setMonth(now.getMonth() - 3);
+                    else if (periodMode === '6m') cutoff.setMonth(now.getMonth() - 6);
+                    else if (periodMode === '1y') cutoff.setFullYear(now.getFullYear() - 1);
+                    else if (periodMode === '2y') cutoff.setFullYear(now.getFullYear() - 2);
+                    if (closeDate < cutoff) return;
                 }
 
-                if (!Object.prototype.hasOwnProperty.call(groupedMap, key)) {
-                    groupedMap[key] = 0;
-                    groupOrder.push(key);
-                }
+                const metrics = calculatePEAPositionMetrics(position);
+                const key = getGroupKey(closeDate);
+                if (!key) return;
+                addToGroup(grossMap, key, metrics.totalExitVal - metrics.totalEntryVal);
+                addToGroup(feesMap, key, metrics.totalFees);
+                addToGroup(transactionFeesMap, key, metrics.feesOnly);
+                addToGroup(ttfMap, key, metrics.ttfOnly);
+            });
 
-                if (op.type === 'buy') {
-                    if (!pruMap[op.asset]) pruMap[op.asset] = { qty: 0, pru: 0 };
-                    const m = pruMap[op.asset];
-                    const newQty = m.qty + qty;
-                    m.pru = newQty > 0 ? (m.qty * m.pru + qty * price) / newQty : price;
-                    m.qty = newQty;
-                } else if (op.type === 'sell') {
-                    if (pruMap[op.asset] && pruMap[op.asset].qty > 0) {
-                        const pnl = (price - pruMap[op.asset].pru) * qty - fees;
-                        groupedMap[key] += pnl;
-                        pruMap[op.asset].qty = Math.max(0, pruMap[op.asset].qty - qty);
-                    }
-                } else if (op.type === 'dividend') {
-                    groupedMap[key] += price;
-                }
+            ops.filter(op => op.type === 'dividend').forEach(op => {
+                const key = getGroupKey(op._date);
+                if (!key) return;
+                addToGroup(grossMap, key, parseFloat(op.price) || 0);
             });
 
             const orderedGroups = [...groupOrder].sort((a, b) => a.localeCompare(b));
@@ -2571,16 +2634,21 @@ function renderPnlEvolutionChart() {
                 if (viewMode === 'daily') {
                     const [year, month, day] = key.split('-').map(Number);
                     return new Date(year, month - 1, day).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-                } else if (viewMode === 'weekly') {
+                }
+                if (viewMode === 'weekly') {
                     return `Sem. ${key.split('-W')[1]} ${key.split('-W')[0]}`;
-                } else if (viewMode === 'monthly') {
+                }
+                if (viewMode === 'monthly') {
                     const [year, month] = key.split('-').map(Number);
                     return new Date(year, month - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-                } else if (viewMode === 'yearly') {
-                    return key;
                 }
+                return key;
             });
-            const values = orderedGroups.map(key => groupedMap[key] || 0);
+
+            const values = orderedGroups.map(key => grossMap[key] || 0);
+            const feesValues = orderedGroups.map(key => feesMap[key] || 0);
+            const transactionFeesValues = orderedGroups.map(key => transactionFeesMap[key] || 0);
+            const ttfValues = orderedGroups.map(key => ttfMap[key] || 0);
 
             const labelLabel = {
                 daily: 'P&L journalier (€)',
@@ -2593,27 +2661,68 @@ function renderPnlEvolutionChart() {
                 type: 'bar',
                 data: {
                     labels,
-                    datasets: [{
-                        label: labelLabel,
-                        data: values,
-                        backgroundColor: values.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'),
-                        borderColor: values.map(v => v >= 0 ? '#10b981' : '#ef4444'),
-                        borderWidth: 1.5,
-                        borderRadius: 4
-                    }]
+                    datasets: [
+                        {
+                            label: 'Frais (€)',
+                            data: feesValues,
+                            backgroundColor: 'rgba(239, 68, 68, 0.4)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            stack: 'pnlStack'
+                        },
+                        {
+                            label: labelLabel,
+                            data: values,
+                            backgroundColor: values.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'),
+                            borderColor: values.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+                            borderWidth: 1.5,
+                            borderRadius: 4,
+                            stack: 'pnlStack'
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { display: false }, ticks: { color: labelColor, font: { size: 11 } } },
-                        y: { grid: { color: gridColor }, ticks: { color: labelColor, callback: (v) => v.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) } }
+                        x: { grid: { display: false }, ticks: { color: labelColor, font: { size: 11 } }, stacked: true },
+                        y: { grid: { color: gridColor }, ticks: { color: labelColor, callback: (v) => v.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) }, stacked: true }
                     },
                     plugins: {
-                        legend: { display: false },
+                        legend: { display: true },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => `${ctx.dataset.label || 'P&L'} : ${Number(ctx.parsed.y).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`
+                                label: (ctx) => `${ctx.dataset.label || 'P&L'} : ${Number(ctx.parsed.y).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
+                                footer: (tooltipItems) => {
+                                    const index = tooltipItems[0].dataIndex;
+                                    const chartData = tooltipItems[0].chart.data;
+                                    const grossDataset = chartData.datasets.find(ds => ds.label === labelLabel);
+                                    const feesDataset = chartData.datasets.find(ds => ds.label === 'Frais (€)');
+                                    const grossValue = grossDataset?.data[index] || 0;
+                                    const feeValue = feesDataset?.data[index] || 0;
+                                    const netPnlValue = grossValue - feeValue;
+                                    const formattedNetPnl = `${netPnlValue >= 0 ? '+' : ''}${netPnlValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`;
+                                    const formattedFeeAmount = Math.abs(feeValue).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+                                    if (!grossValue || grossValue === 0) {
+                                        return [
+                                            `P&L net = ${formattedNetPnl}`,
+                                            `Montant frais = ${formattedFeeAmount}`
+                                        ];
+                                    }
+                                    const totalFeePercent = Math.abs(feeValue) / Math.abs(grossValue) * 100;
+                                    const transactionFeeValue = transactionFeesValues[index] || 0;
+                                    const ttfValue = ttfValues[index] || 0;
+                                    const transactionFeePercent = Math.abs(transactionFeeValue) / Math.abs(grossValue) * 100;
+                                    const ttfPercent = Math.abs(ttfValue) / Math.abs(grossValue) * 100;
+                                    return [
+                                        `P&L net = ${formattedNetPnl}`,
+                                        `Montant frais = ${formattedFeeAmount}`,
+                                        `Frais totaux = ${totalFeePercent.toFixed(2)}% des gains`,
+                                        `Frais transaction = ${transactionFeePercent.toFixed(2)}%`,
+                                        `TTF = ${ttfPercent.toFixed(2)}%`
+                                    ];
+                                }
                             }
                         },
                         zoom: {
@@ -2650,12 +2759,18 @@ function renderPnlEvolutionChart() {
             if (op.type === 'buy') {
                 if (!pruMap[op.asset]) pruMap[op.asset] = { qty: 0, pru: 0 };
                 const m = pruMap[op.asset];
+                const fees = parseFloat(op.fees) || 0;
+                const ttf = parseFloat(op.ttf) || 0;
+                const totalFees = fees + ttf;
                 const newQty = m.qty + qty;
-                m.pru = newQty > 0 ? (m.qty * m.pru + qty * price) / newQty : price;
+                const oldVal = m.qty * m.pru;
+                const newVal = qty * price + totalFees; // frais d'achat inclus
+                m.pru = newQty > 0 ? (oldVal + newVal) / newQty : price;
                 m.qty = newQty;
             } else if (op.type === 'sell') {
                 if (pruMap[op.asset] && pruMap[op.asset].qty > 0) {
-                    const pnl = (price - pruMap[op.asset].pru) * qty - fees;
+                    const ttf = parseFloat(op.ttf) || 0;
+                    const pnl = (price - pruMap[op.asset].pru) * qty - fees - ttf;
                     cumulPnL += pnl;
                     pruMap[op.asset].qty = Math.max(0, pruMap[op.asset].qty - qty);
                 }
@@ -3028,6 +3143,21 @@ function updateCharts(holdingsList, totalPortfolio) {
 
     const filteredPoints = filterPointsByPeriod(uniqueDatesPoints);
 
+    // Mettre à jour l'encart de synthèse capital / capital investi
+    const latestPoint = filteredPoints[filteredPoints.length - 1] || { invested: 0, cashValue: 0, value: 0 };
+    const grossEl = document.getElementById('portfolio-gross-value');
+    const capitalEl = document.getElementById('portfolio-capital-value');
+    const investedEl = document.getElementById('portfolio-invested-value');
+    const remainingEl = document.getElementById('portfolio-remaining-value');
+    const cashValue = (state.portfolio?.cash ?? latestPoint.cashValue) || 0;
+    const capitalValue = typeof totalPortfolio !== 'undefined' ? totalPortfolio : (latestPoint.value || 0);
+    const investedValue = (state.portfolio?.costBasis ?? 0);
+    const grossValue = cashValue + investedValue;
+    if (grossEl) grossEl.textContent = formatCurrency(grossValue);
+    if (capitalEl) capitalEl.textContent = formatCurrency(capitalValue);
+    if (investedEl) investedEl.textContent = formatCurrency(investedValue);
+    if (remainingEl) remainingEl.textContent = formatCurrency(cashValue);
+
     // Extraire les séries pour Chart.js
     const growthLabels = filteredPoints.map(p => {
         if (p.date === 'Aujourd\'hui') return 'Actuel';
@@ -3052,7 +3182,7 @@ function updateCharts(holdingsList, totalPortfolio) {
             tension: 0.3
         },
         {
-            label: 'Valeur totale - capital investi',
+            label: 'Cash restant',
             data: cashData,
             borderColor: '#38bdf8',
             backgroundColor: 'rgba(56, 189, 248, 0.08)',
