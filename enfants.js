@@ -303,13 +303,37 @@ async function refreshPrices() {
         try {
             const query = ticker || asset;
             const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(query)}?interval=1d&range=1d`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-            const response = await fetch(proxyUrl);
-            const data = await response.json();
-            const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-            if (price) {
-                state.livePrices[query] = price;
-                if (asset) state.livePrices[asset] = price;
+            
+            const proxies = [
+                `https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`
+            ];
+
+            let data = null;
+            let success = false;
+            for (const proxyUrl of proxies) {
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        data = await response.json();
+                        if (data?.chart?.result?.[0]?.meta?.regularMarketPrice) {
+                            success = true;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Proxy ${proxyUrl} failed:`, e);
+                }
+            }
+
+            if (success && data) {
+                const price = data.chart.result[0].meta.regularMarketPrice;
+                if (price) {
+                    state.livePrices[query] = price;
+                    if (asset) state.livePrices[asset] = price;
+                }
+            } else {
+                throw new Error('All proxies failed or returned invalid data');
             }
         } catch (error) {
             console.warn('Prix non récupéré pour', ticker || asset, error);

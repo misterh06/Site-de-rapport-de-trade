@@ -41,9 +41,34 @@ let pnlChartSettings = {
     view: 'cumulative'
 };
 
+const TWELVE_DATA_API_KEY = "ee6a290787f341849d49e5b7110b63c1";
+
 let portfolioChartFilters = {
     period: 'all'
 };
+
+function getOperationDateValue(op) {
+    if (!op) return 0;
+    if (op.dateObj instanceof Date) return op.dateObj.getTime();
+    if (op.date && typeof op.date.toDate === 'function') return op.date.toDate().getTime();
+    if (op.date && typeof op.date.seconds === 'number') return op.date.seconds * 1000;
+    const parsed = new Date(op.date);
+    return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+function sortOperationsByDate(ops) {
+    return [...ops]
+        .map((op, index) => ({ ...op, __sourceIndex: op.__sourceIndex ?? index }))
+        .sort((a, b) => {
+            const dateA = getOperationDateValue(a);
+            const dateB = getOperationDateValue(b);
+            if (dateA !== dateB) return dateA - dateB;
+            const createdA = Number(a.createdAt || 0);
+            const createdB = Number(b.createdAt || 0);
+            if (createdA !== createdB) return createdA - createdB;
+            return (a.__sourceIndex || 0) - (b.__sourceIndex || 0);
+        });
+}
 
 // -- Initialisation --
 document.addEventListener('DOMContentLoaded', () => {
@@ -685,10 +710,10 @@ function initApp() {
 
     onSnapshot(q, (snapshot) => {
         console.log("Données PEA reçues :", snapshot.size, "opérations.");
-        state.operations = snapshot.docs.map(doc => ({
+        state.operations = sortOperationsByDate(snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-        }));
+        })));
 
         recalculatePortfolio();
         updateUI();
@@ -868,8 +893,142 @@ function handleUpdatePricesMock() {
 }
 
 // --- API PRIX (YAHOO FINANCE via PROXY) ---
-// Utilisation d'un proxy CORS pour contourner les restrictions navigateur de Yahoo
-// Proxy utilisé : corsproxy.io (très stable)
+// Yahoo Finance bloque souvent l'accès direct depuis le navigateur. On tente l'accès direct,
+// puis des proxies de secours si nécessaire.
+
+async function parseJsonResponse(res, source) {
+    const text = await res.text();
+    try {
+        return JSON.parse(text);
+    } catch (parseError) {
+        throw new Error(`Invalid JSON from ${source} (${parseError.message})`);
+    }
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function fetchTwelveDataPrice(ticker) {
+    if (!ticker) return null;
+    const symbol = encodeURIComponent(ticker.trim().toUpperCase());
+    const url = `https://api.twelvedata.com/price?symbol=${symbol}&apikey=${TWELVE_DATA_API_KEY}`;
+    try {
+        const data = await tryFetchJson(url, 'TwelveData');
+        const price = Number(data?.price);
+        if (!Number.isNaN(price) && price !== 0) {
+            return { symbol: data.symbol || ticker, price };
+        }
+        throw new Error('Aucun prix retourné par TwelveData');
+    } catch (error) {
+        console.warn(`TwelveData fetch failed for ${ticker}:`, error.message || error);
+        return null;
+    }
+}
+
+async function tryFetchJson(url, sourceLabel) {
+    try {
+        const res = await fetchWithTimeout(url);
+        if (!res.ok) {
+            throw new Error(`${sourceLabel || url} HTTP ${res.status}`);
+        }
+        return await parseJsonResponse(res, sourceLabel || url);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error(`${sourceLabel || url} timeout`);
+        }
+        throw error;
+    }
+}
+
+async function fetchYahooJson(url) {
+    const proxies = [
+        { url: `https://corsproxy.io/?url=${encodeURIComponent(url)}`, label: 'corsproxy.io' },
+        { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, label: 'allorigins.raw' },
+        { url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, label: 'allorigins.get' },
+        { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, label: 'api.codetabs.com' },
+        { url: `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, label: 'thingproxy.freeboard.io' },
+        { url, label: 'direct' }
+    ];
+
+    let lastError = null;
+    for (const candidate of proxies) {
+        try {
+            const data = await tryFetchJson(candidate.url, candidate.label);
+            if (candidate.label === 'allorigins.get') {
+                if (data?.contents) {
+                    try {
+                        return JSON.parse(data.contents);
+                    } catch (error) {
+                        throw new Error(`Invalid JSON wrapper from allorigins.get: ${error.message}`);
+                    }
+                }
+                throw new Error('No contents field in allorigins.get response');
+            }
+            return data;
+        } catch (error) {
+            console.warn(`[YahooJson] ${candidate.label} failed for ${url}:`, error.message || error);
+            lastError = error;
+        }
+    }
+
+    throw new Error(`Unable to fetch Yahoo JSON for ${url}: ${lastError?.message || 'unknown error'}`);
+}
+
+async function resolveYahooTicker(rawTicker) {
+    const query = rawTicker.trim();
+    if (!query) return null;
+    const searchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}`;
+    const data = await fetchYahooJson(searchUrl);
+    const symbol = data?.quotes?.[0]?.symbol || data?.news?.[0]?.symbol || data?.quotes?.[0]?.quoteType;
+    return symbol || null;
+}
+
+async function fetchYahooPrice(ticker) {
+    const tryTicker = async (symbol) => {
+        symbol = String(symbol || '').trim();
+        if (!symbol) return null;
+        try {
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+            const data = await fetchYahooJson(url);
+            const result = data?.chart?.result?.[0];
+            const price = result?.meta?.regularMarketPrice || result?.meta?.chartPreviousClose;
+            if (price != null && !Number.isNaN(price)) {
+                return { symbol, price };
+            }
+            throw new Error('No price data in Yahoo response');
+        } catch (error) {
+            console.warn(`Yahoo fetch failed for ${symbol}:`, error.message || error);
+            return null;
+        }
+    };
+
+    let result = await tryTicker(ticker);
+    if (result) return result;
+
+    const resolved = await resolveYahooTicker(ticker);
+    if (resolved && resolved.toUpperCase() !== ticker.trim().toUpperCase()) {
+        result = await tryTicker(resolved);
+    }
+    return result;
+}
+
+async function fetchMarketPrice(ticker) {
+    const providerOrder = [fetchTwelveDataPrice, fetchYahooPrice];
+    for (const provider of providerOrder) {
+        const result = await provider(ticker);
+        if (result && result.price != null) {
+            return result;
+        }
+    }
+    return null;
+}
 
 async function updatePricesFromAPI(silent = false) {
     const btn = document.getElementById('update-prices-btn');
@@ -878,31 +1037,58 @@ async function updatePricesFromAPI(silent = false) {
         btn.disabled = true;
     }
 
+    const resetButton = () => {
+        if (btn) {
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser Prix';
+            btn.disabled = false;
+        }
+    };
+
+    const safetyTimer = setTimeout(() => {
+        console.warn('updatePricesFromAPI: timeout reached, resetting button');
+        resetButton();
+    }, 25000);
+
     // 1. Récupérer les tickers UNIQUES du portefeuille
-    const currentHoldings = state.portfolio.holdings;
-    const symbolsMap = {}; // AssetName -> YahooTicker
+    const currentHoldings = state.portfolio.holdings || {};
+    console.log('updatePricesFromAPI: currentHoldings=', currentHoldings);
+    const tickersToUpdate = new Map(); // YahooTicker -> [assetName,...]
 
     for (const [assetName, holding] of Object.entries(currentHoldings)) {
-        const op = state.operations.find(o => o.asset === assetName && o.ticker);
-        if (op && op.ticker) {
-            let t = op.ticker.trim().toUpperCase();
-            // Yahoo nécessite souvent ".PA" pour Paris, comme Finnhub.
-            // Si pas de suffixe, on assume Paris (.PA)
-            if (!t.includes('.') && !t.includes(':') && !t.includes('=')) {
-                t += ".PA";
+        const ticker = (holding.ticker || '').trim().toUpperCase();
+        if (ticker) {
+            if (!tickersToUpdate.has(ticker)) {
+                tickersToUpdate.set(ticker, []);
             }
-            symbolsMap[assetName] = t;
+            tickersToUpdate.get(ticker).push(assetName);
         }
     }
 
-    const assetsToUpdate = Object.entries(symbolsMap);
-    if (assetsToUpdate.length === 0) {
+    let tickers = [...tickersToUpdate.keys()];
+    if (tickers.length === 0 && state.operations && state.operations.length > 0) {
+        console.warn('updatePricesFromAPI: Aucun ticker dans holdings, fallback sur state.operations');
+        state.operations.forEach(op => {
+            const ticker = (op.ticker || '').trim().toUpperCase();
+            if (ticker) {
+                if (!tickersToUpdate.has(ticker)) {
+                    tickersToUpdate.set(ticker, []);
+                }
+                if (!tickersToUpdate.get(ticker).includes(op.asset)) {
+                    tickersToUpdate.get(ticker).push(op.asset);
+                }
+            }
+        });
+        tickers = [...tickersToUpdate.keys()];
+    }
+
+    console.log('updatePricesFromAPI: tickersToUpdate=', Array.from(tickersToUpdate.entries()));
+    if (tickers.length === 0) {
         if (!silent) alert("Aucun ticker trouvé.");
         if (btn) { btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser Prix'; btn.disabled = false; }
         return;
     }
 
-    console.log(">>> [YAHOO] Récupération pour :", assetsToUpdate.map(x => x[1]));
+    console.log(">>> [YAHOO] Récupération pour :", tickers);
 
     // Initialiser state.livePrices
     if (!state.livePrices) state.livePrices = {};
@@ -910,41 +1096,20 @@ async function updatePricesFromAPI(silent = false) {
     let updatedCount = 0;
 
     try {
-        // Yahoo ne supporte pas bien le batch via endpoint CHART V8 public facile
-        // On fait une boucle. Rapide car Yahoo est performant.
-        for (const [assetName, ticker] of assetsToUpdate) {
-            // URL Magique
-            // On utilise l'endpoint CHART qui est très ouvert
-            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
-            // Passage via Proxy
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+        for (const ticker of tickers) {
+            console.log(`>>> Appel marché (${ticker})...`);
+            const result = await fetchMarketPrice(ticker);
 
-            console.log(`>>> Appel Yahoo (${ticker})...`);
-
-            try {
-                const res = await fetch(proxyUrl);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-                const data = await res.json();
-                // Structure Yahoo : chart.result[0].meta.regularMarketPrice
-                const result = data.chart?.result?.[0];
-
-                if (result && result.meta && result.meta.regularMarketPrice) {
-                    const price = result.meta.regularMarketPrice;
-                    state.livePrices[assetName] = price;
-                    updatedCount++;
-                    console.log(`OK ${ticker} : ${price} EUR`);
-                } else {
-                    console.warn(`Pas de prix dans réponse Yahoo pour ${ticker}`, data);
-                }
-
-            } catch (e) {
-                console.error(`Erreur ${ticker} :`, e);
+            if (result && result.price) {
+                state.livePrices[ticker] = result.price;
+                updatedCount++;
+                console.log(`OK ${ticker} (${result.symbol}) : ${result.price} EUR`);
+            } else {
+                console.warn(`Pas de prix trouvé pour ${ticker}`);
             }
-            // Pas besoin de délai artificiel avec Yahoo, il encaisse bien
         }
 
-        console.log(`>>> Mises à jour : ${updatedCount}/${assetsToUpdate.length}`);
+        console.log(`>>> Mises à jour : ${updatedCount}/${tickers.length}`);
 
         // Rafraichir UI
         updateUI();
@@ -956,7 +1121,8 @@ async function updatePricesFromAPI(silent = false) {
         console.error("Erreur Yahoo Globale :", error);
         if (!silent) alert("Erreur Yahoo : " + error.message);
     } finally {
-        if (btn) { btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser Prix'; btn.disabled = false; }
+        clearTimeout(safetyTimer);
+        resetButton();
     }
 }
 
@@ -988,20 +1154,24 @@ function recalculatePortfolio() {
     let holdings = {};
     const currentYear = new Date().getFullYear();
 
-    state.operations.forEach(op => {
+    const sortedOps = sortOperationsByDate(state.operations);
+
+    sortedOps.forEach(op => {
         const qty = parseFloat(op.quantity) || 0;
         const price = parseFloat(op.price) || 0;
         const fees = parseFloat(op.fees) || 0;
         const ttf = parseFloat(op.ttf) || 0;
         const totalFees = fees + ttf;
-        const totalAmount = (qty * price);
+        const amountValue = parseFloat(op.amount) || (qty * price);
+        const totalAmount = (qty * price) || amountValue;
+        const netAmount = amountValue - totalFees;
 
         if (op.type === 'deposit') {
-            invested += price;
-            cash += price;
+            invested += amountValue;
+            cash += amountValue;
         }
         else if (op.type === 'buy') {
-            cash -= (totalAmount + totalFees);
+            cash -= (amountValue + totalFees);
 
             // Calcul PRU
             if (!holdings[op.asset]) {
@@ -1022,7 +1192,7 @@ function recalculatePortfolio() {
             // Nouveau PRU sans frais
             const newTotalQty = line.qty + qty;
             const oldVal = line.qty * line.pru;
-            const newVal = qty * price; // montant brut sans frais
+            const newVal = amountValue; // montant brut sans frais
 
             if (newTotalQty > 0) {
                 line.pru = (oldVal + newVal) / newTotalQty;
@@ -1039,10 +1209,9 @@ function recalculatePortfolio() {
                 const line = holdings[op.asset];
                 const avgCostPerShare = line.qty > 0 ? (line.totalCost / line.qty) : line.pru;
                 const soldCostBasis = avgCostPerShare * qty;
-                const netProceeds = totalAmount - totalFees;
-                cash += netProceeds;
+                cash += netAmount;
 
-                const pnl = netProceeds - soldCostBasis;
+                const pnl = netAmount - soldCostBasis;
                 realizedPnL += pnl;
 
                 line.qty -= qty;
@@ -1051,32 +1220,41 @@ function recalculatePortfolio() {
                     delete holdings[op.asset]; // Ligne fermée
                 }
             } else {
-                const netProceeds = totalAmount - totalFees;
-                cash += netProceeds;
+                cash += netAmount;
             }
         }
         else if (op.type === 'dividend') {
-            cash += totalAmount; // Montant net perçu
+            cash += amountValue; // Montant net perçu
             // Vérifier l'année
             const opYear = new Date(op.date).getFullYear();
             if (opYear === currentYear) {
-                dividendsYear += totalAmount;
+                dividendsYear += amountValue;
             }
+        }
+        else if (op.type === 'withdrawal') {
+            invested -= amountValue;
+            cash -= amountValue;
         }
     });
 
     // INJECTION DES PRIX LIVE (Si disponibles)
     if (state.livePrices) {
-        Object.keys(holdings).forEach(assetName => {
-            if (state.livePrices[assetName]) {
-                holdings[assetName].currentPrice = state.livePrices[assetName];
-                console.log(`Prix mis à jour pour ${assetName} : ${state.livePrices[assetName]}`);
+        Object.entries(holdings).forEach(([assetName, holding]) => {
+            const ticker = (holding.ticker || '').trim().toUpperCase();
+            const priceFromTicker = ticker ? state.livePrices[ticker] : undefined;
+            const priceFromAsset = state.livePrices[assetName];
+            const livePrice = priceFromTicker !== undefined ? priceFromTicker : priceFromAsset;
+
+            if (livePrice !== undefined) {
+                holdings[assetName].currentPrice = livePrice;
+                console.log(`Prix mis à jour pour ${assetName} (${ticker || 'sans ticker'}) : ${livePrice}`);
             }
         });
     }
 
     const totalCostBasis = Object.values(holdings).reduce((sum, h) => sum + (h.totalCost || ((h.qty || 0) * (h.pru || 0))), 0);
     state.portfolio = { cash, invested, dividendsYear, realizedPnL, holdings, costBasis: totalCostBasis };
+    console.debug('[PEA cash]', { cash, invested, realizedPnL, holdingsCount: Object.keys(holdings).length });
 }
 
 
@@ -1304,7 +1482,8 @@ function renderAssetPerformanceTable(holdingsList, totalPortfolio) {
         .map(item => {
             const metrics = calculatePEAPositionMetrics(item);
             const remainingQty = Math.max(0, metrics.totalEntryQty - metrics.totalExitQty);
-            const currentPrice = (state.livePrices && state.livePrices[item.asset]) || (item.entries?.length ? item.entries[item.entries.length - 1].price : 0);
+            const ticker = (item.ticker || '').trim().toUpperCase();
+            const currentPrice = (state.livePrices && ((ticker && state.livePrices[ticker]) || state.livePrices[item.asset])) || (item.entries?.length ? item.entries[item.entries.length - 1].price : 0);
             const currentValue = item.status === 'open' ? remainingQty * currentPrice : 0;
             const pnlCapitalPercent = investedBase > 0 ? (metrics.pnl / investedBase) * 100 : 0;
             const latestBuy = [...(item.entries || [])].reverse().find(entry => entry.type === 'buy') || null;
@@ -1504,9 +1683,14 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
 
             tr.innerHTML = `
                 <td class="ps-4">
-                    <div class="d-flex align-items-center">
-                        <div class="symbol-badge bg-secondary me-2">${item.name.substring(0, 2).toUpperCase()}</div>
-                        <div class="fw-bold">${item.name}</div>
+                    <div class="d-flex flex-column">
+                        <div class="d-flex align-items-center">
+                            <div class="symbol-badge bg-secondary me-2">${item.name.substring(0, 2).toUpperCase()}</div>
+                            <div>
+                                <div class="fw-bold">${item.name}</div>
+                                ${tickerSafe ? `<small class="text-muted">${tickerSafe}</small>` : ''}
+                            </div>
+                        </div>
                     </div>
                 </td>
                 <td><span class="badge bg-secondary opacity-50">Action</span></td>
@@ -1618,7 +1802,7 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
 
 
 function groupOperationsIntoPositions(ops) {
-    const sortedOps = [...ops].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedOps = sortOperationsByDate(ops);
     const result = [];
     const activePositions = {};
 
@@ -1723,7 +1907,8 @@ function calculatePEAPositionMetrics(pos) {
     if (pos.status === 'closed') {
         pnl = totalExitVal - totalEntryVal - totalFees;
     } else {
-        const currentPrice = (state.livePrices && state.livePrices[pos.asset]) || (pos.entries.length > 0 ? pos.entries[pos.entries.length - 1].price : 0);
+        const ticker = (pos.ticker || '').trim().toUpperCase();
+        const currentPrice = (state.livePrices && ((ticker && state.livePrices[ticker]) || state.livePrices[pos.asset])) || (pos.entries.length > 0 ? pos.entries[pos.entries.length - 1].price : 0);
         const remainingQty = totalEntryQty - totalExitQty;
         const currentVal = remainingQty * currentPrice;
         pnl = (totalExitVal + currentVal) - totalEntryVal - totalFees;
@@ -3018,7 +3203,7 @@ function updateCharts(holdingsList, totalPortfolio) {
     if (charts.growth) charts.growth.destroy();
 
     // 1. Reconstruction Historique Temporelle Séquentielle
-    const sortedOps = [...state.operations].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedOps = sortOperationsByDate(state.operations);
     
     let currentCash = 0;
     let currentInvested = 0;
@@ -3041,18 +3226,21 @@ function updateCharts(holdingsList, totalPortfolio) {
         const qty = parseFloat(op.quantity) || 0;
         const price = parseFloat(op.price) || 0;
         const fees = parseFloat(op.fees) || 0;
-        const totalAmount = qty * price;
+        const ttf = parseFloat(op.ttf) || 0;
+        const totalFees = fees + ttf;
+        const amountValue = parseFloat(op.amount) || (qty * price);
+        const totalAmount = (qty * price) || amountValue;
 
         if (op.type === 'deposit') {
-            currentInvested += price;
-            currentCash += price;
+            currentInvested += amountValue;
+            currentCash += amountValue;
         }
         else if (op.type === 'withdrawal') {
-            currentInvested -= price;
-            currentCash -= price;
+            currentInvested -= amountValue;
+            currentCash -= amountValue;
         }
         else if (op.type === 'buy') {
-            currentCash -= (totalAmount + fees);
+            currentCash -= (amountValue + totalFees);
             if (!currentHoldings[op.asset]) {
                 currentHoldings[op.asset] = { qty: 0, lastPrice: price };
             }
@@ -3060,7 +3248,7 @@ function updateCharts(holdingsList, totalPortfolio) {
             currentHoldings[op.asset].lastPrice = price;
         }
         else if (op.type === 'sell') {
-            currentCash += (totalAmount - fees);
+            currentCash += (amountValue - totalFees);
             if (currentHoldings[op.asset]) {
                 currentHoldings[op.asset].qty -= qty;
                 currentHoldings[op.asset].lastPrice = price;
@@ -3070,7 +3258,7 @@ function updateCharts(holdingsList, totalPortfolio) {
             }
         }
         else if (op.type === 'dividend') {
-            currentCash += price;
+            currentCash += amountValue;
         }
 
         // Calculer la valeur à cette étape
@@ -3105,19 +3293,22 @@ function updateCharts(holdingsList, totalPortfolio) {
     if (uniqueDatesPoints.length > 0) {
         const lastPoint = uniqueDatesPoints[uniqueDatesPoints.length - 1];
         const todayStr = new Date().toISOString().split('T')[0];
+        const currentPortfolioValue = totalPortfolio;
+        const currentCashValue = state.portfolio.cash;
+        const currentHoldingsValue = Object.values(state.portfolio.holdings).reduce((sum, h) => sum + (h.qty || 0) * (h.currentPrice || 0), 0);
         if (lastPoint.date !== todayStr) {
             uniqueDatesPoints.push({
                 date: 'Aujourd\'hui',
                 invested: state.portfolio.invested,
-                value: totalPortfolio,
-                cashValue: state.portfolio.cash,
-                holdingsValue: state.portfolio.invested
+                value: currentPortfolioValue,
+                cashValue: currentCashValue,
+                holdingsValue: currentHoldingsValue
             });
         } else {
-            lastPoint.value = totalPortfolio;
+            lastPoint.value = currentPortfolioValue;
             lastPoint.invested = state.portfolio.invested;
-            lastPoint.cashValue = state.portfolio.cash;
-            lastPoint.holdingsValue = state.portfolio.invested;
+            lastPoint.cashValue = currentCashValue;
+            lastPoint.holdingsValue = currentHoldingsValue;
             lastPoint.date = 'Aujourd\'hui';
         }
     }
