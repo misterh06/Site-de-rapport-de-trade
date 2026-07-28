@@ -1793,7 +1793,7 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
         // Attacher les listeners après création du DOM
         document.querySelectorAll('.sell-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                openSellModal(btn.dataset.name, btn.dataset.ticker, btn.dataset.qty);
+                openPartialSellModal(btn.dataset.name, btn.dataset.ticker, parseFloat(btn.dataset.qty) || 0);
             });
         });
 
