@@ -991,36 +991,47 @@ async function resolveYahooTicker(rawTicker) {
 }
 
 async function fetchYahooPrice(ticker) {
-    const tryTicker = async (symbol) => {
-        symbol = String(symbol || '').trim();
-        if (!symbol) return null;
-        try {
-            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-            const data = await fetchYahooJson(url);
-            const result = data?.chart?.result?.[0];
-            const price = result?.meta?.regularMarketPrice || result?.meta?.chartPreviousClose;
-            if (price != null && !Number.isNaN(price)) {
-                return { symbol, price };
+    const symbol = String(ticker || '').trim().toUpperCase();
+    if (!symbol) return null;
+    try {
+        const url = `https://yahoo-finance166.p.rapidapi.com/api/stock/get-price?region=US&symbol=${encodeURIComponent(symbol)}`;
+        console.log(`[fetchYahooPrice] fetching: ${url}`);
+        const res = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'x-rapidapi-host': 'yahoo-finance166.p.rapidapi.com',
+                'x-rapidapi-key': '1a666a4e33mshf788db998320764p1a45bfjsncb00f7911016'
             }
-            throw new Error('No price data in Yahoo response');
-        } catch (error) {
-            console.warn(`Yahoo fetch failed for ${symbol}:`, error.message || error);
-            return null;
+        });
+        console.log(`[fetchYahooPrice] response status: ${res.status}`);
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
         }
-    };
-
-    let result = await tryTicker(ticker);
-    if (result) return result;
-
-    const resolved = await resolveYahooTicker(ticker);
-    if (resolved && resolved.toUpperCase() !== ticker.trim().toUpperCase()) {
-        result = await tryTicker(resolved);
+        const data = await res.json();
+        console.log(`[fetchYahooPrice] response data:`, data);
+        
+        let priceData = data?.price?.regularMarketPrice;
+        if (!priceData && data?.quoteSummary?.result?.[0]?.price) {
+            priceData = data.quoteSummary.result[0].price.regularMarketPrice;
+        }
+        
+        let price = priceData;
+        if (price && typeof price === 'object' && price.raw !== undefined) {
+            price = price.raw;
+        }
+        
+        if (price != null && !Number.isNaN(price)) {
+            return { symbol, price: Number(price) };
+        }
+        throw new Error('No price data in RapidAPI response');
+    } catch (error) {
+        console.error(`[fetchYahooPrice] failed for ${symbol}:`, error.message || error);
+        return null;
     }
-    return result;
 }
 
 async function fetchMarketPrice(ticker) {
-    const providerOrder = [fetchTwelveDataPrice, fetchYahooPrice];
+    const providerOrder = [fetchYahooPrice, fetchTwelveDataPrice];
     for (const provider of providerOrder) {
         const result = await provider(ticker);
         if (result && result.price != null) {
@@ -1028,6 +1039,53 @@ async function fetchMarketPrice(ticker) {
         }
     }
     return null;
+}
+
+async function fetchPricesFromGoogleSheet() {
+    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTia7alCKPRGtG-CLXkCffnTEytWlf12pML_6EtufxPmuSGDTDE4wlMlB_WSd8u2hRviDaCJ_bh06mv/pub?output=csv";
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const lines = text.split(/\r?\n/);
+    const priceMap = new Map();
+
+    const parseCsvLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current);
+        return result;
+    };
+
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        const parts = parseCsvLine(line);
+        if (parts.length >= 2) {
+            const rawTicker = parts[0].replace(/"/g, '').trim().toUpperCase();
+            if (!rawTicker) continue;
+            
+            // Convertir le prix (remplacer la virgule française par un point décimal)
+            const rawPriceStr = parts[1].replace(/"/g, '').replace(',', '.').trim();
+            const price = parseFloat(rawPriceStr);
+            if (!isNaN(price) && price > 0) {
+                const baseTicker = rawTicker.replace(/\.[A-Z0-9]{1,4}$/i, '');
+                priceMap.set(rawTicker, price);
+                priceMap.set(baseTicker, price);
+            }
+        }
+    }
+    return priceMap;
 }
 
 async function updatePricesFromAPI(silent = false) {
@@ -1044,84 +1102,66 @@ async function updatePricesFromAPI(silent = false) {
         }
     };
 
-    const safetyTimer = setTimeout(() => {
-        console.warn('updatePricesFromAPI: timeout reached, resetting button');
-        resetButton();
-    }, 25000);
-
-    // 1. Récupérer les tickers UNIQUES du portefeuille
-    const currentHoldings = state.portfolio.holdings || {};
-    console.log('updatePricesFromAPI: currentHoldings=', currentHoldings);
-    const tickersToUpdate = new Map(); // YahooTicker -> [assetName,...]
-
-    for (const [assetName, holding] of Object.entries(currentHoldings)) {
-        const ticker = (holding.ticker || '').trim().toUpperCase();
-        if (ticker) {
-            if (!tickersToUpdate.has(ticker)) {
-                tickersToUpdate.set(ticker, []);
-            }
-            tickersToUpdate.get(ticker).push(assetName);
-        }
-    }
-
-    let tickers = [...tickersToUpdate.keys()];
-    if (tickers.length === 0 && state.operations && state.operations.length > 0) {
-        console.warn('updatePricesFromAPI: Aucun ticker dans holdings, fallback sur state.operations');
-        state.operations.forEach(op => {
-            const ticker = (op.ticker || '').trim().toUpperCase();
-            if (ticker) {
-                if (!tickersToUpdate.has(ticker)) {
-                    tickersToUpdate.set(ticker, []);
-                }
-                if (!tickersToUpdate.get(ticker).includes(op.asset)) {
-                    tickersToUpdate.get(ticker).push(op.asset);
-                }
-            }
-        });
-        tickers = [...tickersToUpdate.keys()];
-    }
-
-    console.log('updatePricesFromAPI: tickersToUpdate=', Array.from(tickersToUpdate.entries()));
-    if (tickers.length === 0) {
-        if (!silent) alert("Aucun ticker trouvé.");
-        if (btn) { btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualiser Prix'; btn.disabled = false; }
-        return;
-    }
-
-    console.log(">>> [YAHOO] Récupération pour :", tickers);
-
-    // Initialiser state.livePrices
     if (!state.livePrices) state.livePrices = {};
-
     let updatedCount = 0;
 
     try {
-        for (const ticker of tickers) {
-            console.log(`>>> Appel marché (${ticker})...`);
-            const result = await fetchMarketPrice(ticker);
+        console.log(">>> Récupération des prix depuis Google Sheets...");
+        const sheetPrices = await fetchPricesFromGoogleSheet();
 
-            if (result && result.price) {
-                state.livePrices[ticker] = result.price;
+        const currentHoldings = state.portfolio.holdings || {};
+        const tickersToUpdate = new Set();
+
+        for (const [assetName, holding] of Object.entries(currentHoldings)) {
+            const ticker = (holding.ticker || '').trim().toUpperCase();
+            if (ticker) tickersToUpdate.add(ticker);
+        }
+
+        if (tickersToUpdate.size === 0 && state.operations) {
+            state.operations.forEach(op => {
+                const ticker = (op.ticker || '').trim().toUpperCase();
+                if (ticker) tickersToUpdate.add(ticker);
+            });
+        }
+
+        tickersToUpdate.forEach(ticker => {
+            const baseTicker = ticker.replace(/\.[A-Z0-9]{1,4}$/i, '');
+            const price = sheetPrices.get(ticker) || sheetPrices.get(baseTicker);
+            if (price !== undefined) {
+                state.livePrices[ticker] = price;
+                state.livePrices[baseTicker] = price;
                 updatedCount++;
-                console.log(`OK ${ticker} (${result.symbol}) : ${result.price} EUR`);
+                console.log(`OK GoogleSheet ${ticker} : ${price} EUR`);
             } else {
-                console.warn(`Pas de prix trouvé pour ${ticker}`);
+                console.warn(`Pas de prix trouvé dans Google Sheet pour ${ticker}`);
+            }
+        });
+
+        // Secours RapidAPI si certains tickers ne sont pas trouvés dans la feuille
+        if (updatedCount < tickersToUpdate.size) {
+            console.log("Avis: Certains tickers ne sont pas dans Google Sheet, essai de secours RapidAPI...");
+            for (const ticker of tickersToUpdate) {
+                const baseTicker = ticker.replace(/\.[A-Z0-9]{1,4}$/i, '');
+                if (state.livePrices[ticker] === undefined && state.livePrices[baseTicker] === undefined) {
+                    const res = await fetchMarketPrice(ticker);
+                    if (res && res.price) {
+                        state.livePrices[ticker] = res.price;
+                        state.livePrices[baseTicker] = res.price;
+                        updatedCount++;
+                    }
+                }
             }
         }
 
-        console.log(`>>> Mises à jour : ${updatedCount}/${tickers.length}`);
-
-        // Rafraichir UI
         updateUI();
 
-        if (!silent && updatedCount > 0) alert(`${updatedCount} prix mis à jour via Yahoo Finance !`);
-        if (!silent && updatedCount === 0) alert("Impossible de récupérer les prix. Vérifiez les tickers (ex: CA.PA).");
+        if (!silent && updatedCount > 0) alert(`${updatedCount} prix mis à jour instantanément via Google Sheets !`);
+        if (!silent && updatedCount === 0) alert("Impossible de récupérer les prix. Vérifiez votre feuille Google Sheets.");
 
     } catch (error) {
-        console.error("Erreur Yahoo Globale :", error);
-        if (!silent) alert("Erreur Yahoo : " + error.message);
+        console.error("Erreur mise à jour prix :", error);
+        if (!silent) alert("Erreur lors de la mise à jour : " + error.message);
     } finally {
-        clearTimeout(safetyTimer);
         resetButton();
     }
 }
@@ -1241,9 +1281,11 @@ function recalculatePortfolio() {
     if (state.livePrices) {
         Object.entries(holdings).forEach(([assetName, holding]) => {
             const ticker = (holding.ticker || '').trim().toUpperCase();
+            const baseTicker = ticker ? ticker.replace(/\.[A-Z0-9]{1,4}$/i, '') : '';
             const priceFromTicker = ticker ? state.livePrices[ticker] : undefined;
-            const priceFromAsset = state.livePrices[assetName];
-            const livePrice = priceFromTicker !== undefined ? priceFromTicker : priceFromAsset;
+            const priceFromBase = baseTicker ? state.livePrices[baseTicker] : undefined;
+            const priceFromAsset = state.livePrices[assetName] || state.livePrices[assetName.toUpperCase()];
+            const livePrice = priceFromTicker !== undefined ? priceFromTicker : (priceFromBase !== undefined ? priceFromBase : priceFromAsset);
 
             if (livePrice !== undefined) {
                 holdings[assetName].currentPrice = livePrice;
