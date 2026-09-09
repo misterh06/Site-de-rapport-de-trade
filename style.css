@@ -31,27 +31,26 @@ body {
 }
 
 .sidebar a {
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
-    display: block;
-    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    padding: 9px 12px;
     border-radius: 8px;
-    /* Plus arrondi */
-    margin-bottom: 5px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 3px;
+    transition: all 0.25s ease;
     border-left: 3px solid transparent;
     font-weight: 500;
+    font-size: 0.92rem;
 }
 
 .sidebar a:hover,
 .sidebar a.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
     border-left-color: #00f2ff;
-    /* Cyan Néon */
-    box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
-    /* Lueur futuriste */
-    transform: translateX(5px);
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
+    transform: translateX(4px);
 }
 
 .sidebar a i {
@@ -60,8 +59,34 @@ body {
 }
 
 .sidebar a:hover i {
-    transform: scale(1.2);
+    transform: scale(1.15);
     color: #00f2ff;
+}
+
+.sidebar-category-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 1.1rem;
+    margin-bottom: 0.4rem;
+    padding-left: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-category-title i {
+    font-size: 0.85rem;
+    margin-right: 6px;
+}
+
+.nav-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 0.2em 0.55em;
+    border-radius: 12px;
+    margin-left: auto;
 }
 
 .account-switch-card {
@@ -341,4 +366,14 @@ body {
 .star-rating label:hover {
     transform: scale(1.2);
     transition: transform 0.2s;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    display: inline-block;
+    animation: spin 1s linear infinite;
 }

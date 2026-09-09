@@ -383,19 +383,22 @@ onAuthStateChanged(auth, async (user) => {
         await fetchTitleAccountsFromFirestore();
         refreshTitleAccountSelection();
 
-        // Lancer les deux chargements de données en parallèle pour plus de rapidité
+        // Lancer les chargements de données en parallèle pour plus de rapidité
         await Promise.all([
             fetchStaticData(), // Charge les positions ouvertes et les transactions de compte
             fetchData(),
             fetchAllClosedPositionsForStats(),
             fetchStrategies(),      // Charge la première page de l'historique des positions clôturées
-            fetchExchangeRate()      // Récupère le taux de change EUR/USD
+            fetchExchangeRate(),    // Récupère le taux de change EUR/USD
+            fetchStockPricesFromGoogleSheet() // Récupère les cours réels des actions (US + PEA)
         ]);
 
         // Une fois TOUTES les données chargées, on met à jour l'interface
         updateAllViews();
         updateChartColors(localStorage.getItem('theme') || 'light');
-        showSection('dashboard');
+
+        const initialSection = (window.location.hash && window.location.hash.substring(1)) || 'dashboard';
+        showSection(initialSection);
 
         // ---- FIN DES MODIFICATIONS ----
 
@@ -415,19 +418,157 @@ onAuthStateChanged(auth, async (user) => {
     ;
 
 // --- Fonction pour récupérer le taux de change EUR/USD ---
+// Source primaire : Google Sheet "Taux de conversion" (même doc que les prix d'actions PEA, gid=940617889)
+// Fallback : API frankfurter.app
+const GOOGLE_SHEET_CSV_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTia7alCKPRGtG-CLXkCffnTEytWlf12pML_6EtufxPmuSGDTDE4wlMlB_WSd8u2hRviDaCJ_bh06mv/pub?output=csv";
+const GOOGLE_SHEET_TAUX_URL = `${GOOGLE_SHEET_CSV_BASE}&gid=940617889`;
+
 async function fetchExchangeRate() {
+    // --- Tentative 1 : Lire le taux depuis le Google Sheet "Taux de conversion" ---
+    // Format CSV attendu: eurusd,"1,1614" (valeur avec virgule décimale française entre guillemets)
+    try {
+        const response = await fetch(GOOGLE_SHEET_TAUX_URL, { cache: 'no-store' });
+        if (response.ok) {
+            const text = await response.text();
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            for (const line of lines) {
+                // Extraire toutes les valeurs entre guillemets ou séparées par des virgules
+                // Ex: eurusd,"1,1614" -> on récupère "1,1614" puis on remplace la virgule par un point
+                const quotedMatch = line.match(/"([^"]+)"/);
+                let numericVal = NaN;
+                if (quotedMatch) {
+                    // Valeur entre guillemets (potentiellement avec virgule décimale française)
+                    numericVal = parseFloat(quotedMatch[1].replace(',', '.'));
+                } else {
+                    // Valeur sans guillemets : on prend la 2ème colonne
+                    const parts = line.split(',');
+                    if (parts.length >= 2) numericVal = parseFloat(parts[1].trim());
+                }
+                if (!isNaN(numericVal) && numericVal > 0.5 && numericVal < 2.5) {
+                    // Plage réaliste pour EUR/USD
+                    eurToUsdRate = numericVal;
+                    localStorage.setItem('eurToUsdRate', eurToUsdRate.toString());
+                    console.log(`[Google Sheet] Taux EUR/USD mis à jour : ${eurToUsdRate}`);
+                    updateExchangeRateDisplay();
+                    return;
+                }
+            }
+            console.warn('[Google Sheet] Taux introuvable dans la feuille Taux de conversion - tentative API fallback');
+        }
+    } catch (sheetError) {
+        console.warn('[Google Sheet] Erreur de lecture du taux:', sheetError);
+    }
+
+    // --- Tentative 2 (fallback) : API frankfurter.app ---
     try {
         const response = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
         const data = await response.json();
         if (data && data.rates && data.rates.USD) {
             eurToUsdRate = data.rates.USD;
             localStorage.setItem('eurToUsdRate', eurToUsdRate.toString());
-            console.log(`Taux EUR/USD mis à jour : ${eurToUsdRate}`);
+            console.log(`[API Frankfurter] Taux EUR/USD mis à jour : ${eurToUsdRate}`);
+            updateExchangeRateDisplay();
         }
     } catch (error) {
-        console.warn('Erreur lors de la récupération du taux de change, utilisation du taux par défaut', error);
-        // On garde la valeur par défaut ou celle stockée en cache
+        console.warn('[API] Erreur lors de la récupération du taux de change, utilisation du taux en cache', error);
+        // On garde la valeur par défaut ou celle stockée en cache localStorage
     }
+}
+
+// URLs Google Sheets des cours d'actions
+const GOOGLE_SHEET_STOCKS_PEA_URL = `${GOOGLE_SHEET_CSV_BASE}&gid=0`;
+const GOOGLE_SHEET_STOCKS_US_URL = `${GOOGLE_SHEET_CSV_BASE}&gid=665319642`;
+
+// Cache des prix d'actions en mémoire (Ticker en majuscule -> Prix)
+let liveStockPricesMap = new Map();
+
+function parseCustomCsvLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current);
+    return result;
+}
+
+async function fetchStockPricesFromGoogleSheet() {
+    try {
+        console.log('[Google Sheet] Début chargement des prix d’actions...');
+
+        // 1. Charger Actions US
+        try {
+            const resUS = await fetch(GOOGLE_SHEET_STOCKS_US_URL);
+            if (resUS.ok) {
+                const textUS = await resUS.text();
+                const lines = textUS.split(/\r?\n/).filter(l => l.trim());
+                for (const line of lines) {
+                    const parts = parseCustomCsvLine(line);
+                    if (parts.length >= 2) {
+                        const rawTicker = parts[0].replace(/"/g, '').trim().toUpperCase();
+                        if (!rawTicker) continue;
+                        const rawPriceStr = parts[1].replace(/"/g, '').replace(',', '.').trim();
+                        const price = parseFloat(rawPriceStr);
+                        if (!isNaN(price) && price > 0) {
+                            const baseTicker = rawTicker.replace(/\.[A-Z0-9]{1,4}$/i, '');
+                            liveStockPricesMap.set(rawTicker, price);
+                            liveStockPricesMap.set(baseTicker, price);
+                        }
+                    }
+                }
+                console.log(`[Google Sheet] Actions US chargées (${liveStockPricesMap.size} tickers en mémoire)`);
+            } else {
+                console.warn('[Google Sheet] HTTP Status Actions US:', resUS.status);
+            }
+        } catch (usErr) {
+            console.warn('[Google Sheet] Erreur fetch Actions US:', usErr);
+        }
+
+        // 2. Charger PEA
+        try {
+            const resPEA = await fetch(GOOGLE_SHEET_STOCKS_PEA_URL);
+            if (resPEA.ok) {
+                const textPEA = await resPEA.text();
+                const lines = textPEA.split(/\r?\n/).filter(l => l.trim());
+                for (const line of lines) {
+                    const parts = parseCustomCsvLine(line);
+                    if (parts.length >= 2) {
+                        const rawTicker = parts[0].replace(/"/g, '').trim().toUpperCase();
+                        if (!rawTicker) continue;
+                        const rawPriceStr = parts[1].replace(/"/g, '').replace(',', '.').trim();
+                        const price = parseFloat(rawPriceStr);
+                        if (!isNaN(price) && price > 0) {
+                            const baseTicker = rawTicker.replace(/\.[A-Z0-9]{1,4}$/i, '');
+                            liveStockPricesMap.set(rawTicker, price);
+                            liveStockPricesMap.set(baseTicker, price);
+                        }
+                    }
+                }
+            }
+        } catch (peaErr) {
+            console.warn('[Google Sheet] Erreur fetch PEA:', peaErr);
+        }
+
+        // 3. Rafraîchir l'affichage du tableau
+        renderOpenPositions();
+    } catch (err) {
+        console.warn('[Google Sheet] Erreur globale récupération prix:', err);
+    }
+}
+
+// Mettre à jour l'affichage du taux si un élément dédié existe dans la page
+function updateExchangeRateDisplay() {
+    const el = document.getElementById('eur-usd-rate-display');
+    if (el) el.textContent = `1 EUR = ${eurToUsdRate.toFixed(4)} USD`;
 }
 
 async function fetchStrategies() {
@@ -518,25 +659,77 @@ async function fetchAllClosedPositionsForStats() {
     if (!currentUser) return;
     try {
         allClosedPositionsForStats = [];
-
         const selectedAccountId = getSelectedTitleAccountId();
+
+        // 1. Charger les positions ACTIONS clôturées
         const q = query(collection(db, 'users', currentUser.uid, 'positions'), where('status', '==', 'closed'), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
-
         const positionsTemp = querySnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(pos => isDocumentForSelectedAccount(pos, selectedAccountId));
-
         positionsTemp.forEach(p => {
             if (p.entries) p.entries.forEach(e => e.date = e.date.toDate());
             if (p.exits) p.exits.forEach(ex => ex.date = ex.date.toDate());
         });
 
-        allClosedPositionsForStats = positionsTemp;
+        // 2. Charger les positions OPTIONS clôturées
+        let normalizedOptions = [];
+        try {
+            const optSnap = await getDocs(collection(db, 'users', currentUser.uid, 'optionsPositions'));
+            const closedOptions = optSnap.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(opt => opt.status === 'closed' && isDocumentForSelectedAccount(opt, selectedAccountId));
+            normalizedOptions = closedOptions.map(opt => normalizeOptionToPosition(opt));
+        } catch (optErr) {
+            console.warn("Impossible de charger les options pour les stats:", optErr);
+        }
+
+        // 3. Fusionner et trier par date de clôture décroissante
+        allClosedPositionsForStats = [...positionsTemp, ...normalizedOptions].sort((a, b) => {
+            const dateA = getClosingDate(a);
+            const dateB = getClosingDate(b);
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateB - dateA;
+        });
+
+        console.log(`Stats chargées : ${positionsTemp.length} action(s) + ${normalizedOptions.length} option(s) = ${allClosedPositionsForStats.length} position(s) total`);
 
     } catch (error) {
         console.error("Erreur lors du chargement de toutes les positions clôturées:", error);
     }
+}
+
+/**
+ * Normalise une optionsPosition clôturée en pseudo-position compatible
+ * avec le système de stats (allClosedPositionsForStats).
+ */
+function normalizeOptionToPosition(opt) {
+    const entryDate = opt.entryDate ? new Date(opt.entryDate) : new Date(opt.createdAt || Date.now());
+    const closeDate = opt.closeDate ? new Date(opt.closeDate) : new Date(opt.updatedAt || Date.now());
+    const contracts = parseFloat(opt.contracts) || 1;
+    const multiplier = parseFloat(opt.multiplier) || 100;
+    const entryPrem = parseFloat(opt.premiumPrice) || 0;
+    const closePrem = parseFloat(opt.closePremiumPrice) || 0;
+    const entryComm = parseFloat(opt.entryCommission) || 0;
+    const exitComm = parseFloat(opt.exitCommission) || 0;
+    const ticker = (opt.ticker || 'OPT').toUpperCase();
+    const strike = parseFloat(opt.strike) || 0;
+    const optType = (opt.optionType || 'call').toUpperCase();
+
+    return {
+        id: 'opt_' + opt.id,
+        _isOption: true,
+        _optionData: opt,
+        asset: `${ticker} ${strike}$ ${optType}`,
+        type: opt.side === 'buy' ? 'long' : 'short',
+        currency: 'USD',
+        status: 'closed',
+        accountId: opt.accountId,
+        entries: [{ date: entryDate, quantity: contracts, price: entryPrem * multiplier, fees: entryComm }],
+        exits: [{ date: closeDate, quantity: contracts, price: closePrem * multiplier, fees: exitComm }],
+    };
 }
 
 // --- GESTION DES STRATÉGIES ---
@@ -658,7 +851,7 @@ function updatePaginationControls(currentSize) {
 async function updateAllViews() {
     // Logique pour les positions
     renderOpenPositions();
-    renderClosedPositionsHistory();
+    applySortingAndRender();
     renderLastClosedPositions();
     updateDashboardStats();
     renderCharts(allClosedPositionsForStats, strategies, getClosingDate, calculatePositionPnL);
@@ -675,7 +868,11 @@ function showSection(sectionId) {
     if (activeSection) {
         activeSection.classList.add('active');
 
-        // --- MODIFICATION ICI ---
+        // Si on affiche les positions ouvertes, on s'assure que le tableau et les prix sont rafraîchis
+        if (sectionId === 'open-positions') {
+            renderOpenPositions();
+        }
+
         // On redessine les graphiques APRES que la section soit devenue visible
         if (sectionId === 'dashboard' || sectionId === 'reports-analytics') {
             // On ajoute un délai de 50ms pour laisser le temps au navigateur de rendre la section
@@ -694,11 +891,51 @@ function showSection(sectionId) {
 function renderOpenPositions() {
     openPositionsBody.innerHTML = '';
     if (openPositions.length === 0) {
-        openPositionsBody.innerHTML = '<tr><td colspan="7" class="text-center">Aucune position ouverte.</td></tr>';
+        openPositionsBody.innerHTML = '<tr><td colspan="9" class="text-center">Aucune position ouverte.</td></tr>';
         return;
     }
     openPositions.forEach(pos => {
         const metrics = calculatePositionMetrics(pos);
+
+        // --- Récupération du cours réel en direct (depuis Google Sheet) ---
+        const tickerUpper = (pos.asset || '').trim().toUpperCase();
+        const baseTicker = tickerUpper.replace(/\.[A-Z0-9]{1,4}$/i, '');
+        const livePrice = liveStockPricesMap.get(tickerUpper) || liveStockPricesMap.get(baseTicker) || null;
+
+        let livePriceHtml = '<span class="text-muted">—</span>';
+        let unrealizedPnLHtml = '<span class="text-muted">—</span>';
+
+        if (livePrice !== null && metrics.currentQuantity > 0) {
+            livePriceHtml = `
+                <span class="font-monospace fw-bold text-success" title="Cours réel en direct (Google Sheet)">
+                    ${livePrice.toFixed(2)} ${pos.currency}
+                </span>
+                <span class="badge bg-success bg-opacity-10 text-success ms-1" style="font-size: 0.65rem;">LIVE</span>
+            `;
+
+            // Calcul du P/L latent (non réalisé)
+            let unrealizedPnL = 0;
+            if (pos.type === 'long') {
+                unrealizedPnL = (livePrice - metrics.averageEntryPrice) * metrics.currentQuantity;
+            } else {
+                unrealizedPnL = (metrics.averageEntryPrice - livePrice) * metrics.currentQuantity;
+            }
+
+            const investedValue = metrics.currentQuantity * metrics.averageEntryPrice;
+            const pnlPercent = investedValue > 0 ? (unrealizedPnL / investedValue) * 100 : 0;
+            const isPos = unrealizedPnL >= 0;
+            const color = isPos ? '#198754' : '#dc3545';
+            const sign = isPos ? '+' : '';
+
+            unrealizedPnLHtml = `
+                <span class="fw-bold font-monospace" style="color: ${color};">
+                    ${sign}${unrealizedPnL.toFixed(2)} ${pos.currency}
+                </span>
+                <br><small class="fw-semibold" style="color: ${color}; font-size:0.75em;">
+                    (${sign}${pnlPercent.toFixed(2)}%)
+                </small>
+            `;
+        }
 
         // --- Calcul du P&L réalisé sur les sorties partielles ---
         let realizedPnLHtml = '<span class="text-muted">—</span>';
@@ -731,6 +968,8 @@ function renderOpenPositions() {
             <td>${metrics.currentQuantity}</td>
             <td class="font-monospace">${metrics.averageEntryPrice.toFixed(4)} ${pos.currency}</td>
             <td class="font-monospace">${(metrics.currentQuantity * metrics.averageEntryPrice).toFixed(2)} ${pos.currency}</td>
+            <td>${livePriceHtml}</td>
+            <td>${unrealizedPnLHtml}</td>
             <td>${realizedPnLHtml}</td>
             <td>
                 <button class="btn btn-sm btn-success me-1" onclick="handleModifyPosition('${pos.id}', 'add')">Renforcer</button>
@@ -933,8 +1172,7 @@ editEntryForm.addEventListener('submit', async (e) => {
         // Recharger les données pour que tout soit à jour
         await Promise.all([fetchStaticData(), fetchData(), fetchAllClosedPositionsForStats()]);
         updateAllViews();
-
-        Toastify({ text: "Transaction modifiée avec succès.", className: "info", style: { background: "green" } }).showToast();
+Toastify({ text: "Transaction modifiée avec succès.", className: "info", style: { background: "green" } }).showToast();
 
     } catch (error) {
         console.error("Erreur lors de la mise à jour de la transaction :", error);
@@ -951,81 +1189,93 @@ cancelEntryEditBtn.addEventListener('click', () => {
 function renderClosedPositionsHistory() {
     allPositionsBody.innerHTML = '';
     if (closedPositions.length === 0) {
-        // Le colspan passe de 10 à 11
-        allPositionsBody.innerHTML = '<tr><td colspan="11" class="text-center">Aucune position clôturée.</td></tr>';
+        allPositionsBody.innerHTML = '<tr><td colspan="12" class="text-center">Aucune position clôturée.</td></tr>';
         return;
     }
 
     closedPositions.forEach(pos => {
-        const metrics = calculatePositionMetrics(pos);
         const pnl = calculatePositionPnL(pos);
+        const row = allPositionsBody.insertRow();
 
-        // Logique pour la stratégie (inchangée)
-        // let strategyTitle = '-';
-        // if (pos.strategyId) {
-        //     const foundStrategy = strategies.find(s => s.id === pos.strategyId);
-        //     strategyTitle = foundStrategy ? `<span class="badge bg-secondary">${foundStrategy.title}</span>` : `<span class="badge bg-light text-dark">Inconnue</span>`;
-        // }
+        if (pos._isOption) {
+            const opt = pos._optionData;
+            const entryDate = pos.entries[0].date;
+            const closeDate = getClosingDate(pos);
+            const durationMs = closeDate && entryDate ? closeDate - entryDate : 0;
+            const contracts = parseFloat(opt.contracts) || 1;
+            const entryPrem = parseFloat(opt.premiumPrice) || 0;
+            const closePrem = parseFloat(opt.closePremiumPrice) || 0;
 
-        // --- ✨ NOUVELLE LOGIQUE EFFICACITÉ (P&L / heure) ---
+            let optTypeBadge = '';
+            if (opt.optionType === 'call') {
+                optTypeBadge = opt.side === 'buy'
+                    ? `<span class="badge" style="background:rgba(59,130,246,.2);color:#60a5fa;border:1px solid #60a5fa;">Achat CALL</span>`
+                    : `<span class="badge" style="background:rgba(59,130,246,.2);color:#60a5fa;border:1px solid #60a5fa;">Vente CALL</span>`;
+            } else {
+                optTypeBadge = opt.side === 'buy'
+                    ? `<span class="badge" style="background:rgba(251,191,36,.2);color:#fbbf24;border:1px solid #fbbf24;">Achat PUT</span>`
+                    : `<span class="badge" style="background:rgba(251,191,36,.2);color:#fbbf24;border:1px solid #fbbf24;">Vente PUT</span>`;
+            }
+
+            const effBadge = pnl < 0
+                ? `<span style="color:#dc3545;font-size:1em;" title="Trade perdant">❌</span>`
+                : `<span style="color:#10b981;font-size:1.1em;" title="Option gagnante">✅</span>`;
+
+            row.innerHTML = `
+                <td class="text-muted small">${formatDate(entryDate)}</td>
+                <td class="text-muted small">${closeDate ? formatDate(closeDate) : '-'}</td>
+                <td class="small">${durationMs > 0 ? formatDuration(durationMs) : '-'}</td>
+                <td class="fw-bold">${pos.asset} <span class="badge" style="background:rgba(139,92,246,.25);color:#a78bfa;border:1px solid #a78bfa;font-size:0.65em;">🎯 Option</span></td>
+                <td>${optTypeBadge}</td>
+                <td class="text-center">${effBadge}</td>
+                <td class="text-center text-secondary small">1</td>
+                <td class="text-center">${contracts}x</td>
+                <td class="font-monospace">$${entryPrem.toFixed(2)}</td>
+                <td class="font-monospace">$${closePrem.toFixed(2)}</td>
+                <td class="fw-bold" style="color: ${pnl >= 0 ? '#198754' : '#dc3545'};">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center gap-1">
+                        <a href="options.html" class="btn btn-sm btn-outline-secondary" title="Voir sur la page Options" target="_blank"><i class="bi bi-box-arrow-up-right"></i></a>
+                    </div>
+                </td>`;
+            return;
+        }
+
+        const metrics = calculatePositionMetrics(pos);
         const closingDate = getClosingDate(pos);
         const openingDate = pos.entries[0].date;
         const durationMs = closingDate - openingDate;
-        const durationHours = durationMs / (1000 * 60 * 60); // Durée en heures
-
-        // Calculer l'efficacité : P&L par heure, normalisé par le coût d'entrée
-        const totalCost = metrics.totalCost || 1; // Éviter division par zéro
+        const durationHours = durationMs / (1000 * 60 * 60);
+        const totalCost = metrics.totalCost || 1;
         const efficiencyPerHour = durationHours > 0 ? (pnl / durationHours) : 0;
-        const efficiencyPercent = (efficiencyPerHour / totalCost) * 100; // % par heure
+        const efficiencyPercent = (efficiencyPerHour / totalCost) * 100;
 
-        // Générer l'affichage selon le résultat
         let efficiencyBadge;
-
         if (pnl < 0) {
-            // Trade perdant : pas d'étoiles, juste un indicateur de perte
             efficiencyBadge = `<span style="color: #dc3545; font-size: 1em;" title="Trade perdant: ${pnl.toFixed(2)}">❌</span>`;
         } else {
-            // Trade gagnant : attribuer les étoiles (1 à 4)
             let efficiencyStars = 1;
-            let starColor = '#fd7e14'; // Orange par défaut (1 étoile)
-
-            if (efficiencyPercent < 0.5) {
-                efficiencyStars = 1;
-                starColor = '#fd7e14'; // Orange
-            } else if (efficiencyPercent < 1) {
-                efficiencyStars = 2;
-                starColor = '#ffc107'; // Jaune
-            } else if (efficiencyPercent < 2) {
-                efficiencyStars = 3;
-                starColor = '#9acd32'; // Vert-jaune
-            } else {
-                efficiencyStars = 4;
-                starColor = '#198754'; // Vert
-            }
-
+            let starColor = '#fd7e14';
+            if (efficiencyPercent < 0.5) { efficiencyStars = 1; starColor = '#fd7e14'; }
+            else if (efficiencyPercent < 1) { efficiencyStars = 2; starColor = '#ffc107'; }
+            else if (efficiencyPercent < 2) { efficiencyStars = 3; starColor = '#9acd32'; }
+            else { efficiencyStars = 4; starColor = '#198754'; }
             const fullStars = '⭐'.repeat(efficiencyStars);
             const emptyStars = '☆'.repeat(4 - efficiencyStars);
             efficiencyBadge = `<span style="color: ${starColor}; font-size: 0.9em;" title="Efficacité: ${efficiencyPercent.toFixed(2)}%/h">${fullStars}${emptyStars}</span>`;
         }
 
-        // Badge pour le Type (Long/Short)
         const typeBadge = pos.type === 'long'
             ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Long</span>`
             : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Short</span>`;
 
-        // Nombre de transactions d'entrée (inchangé)
         const numberOfEntries = pos.entries ? pos.entries.length : 0;
-
-        // --- ✨ LOGIQUE AJOUTÉE POUR LA QUANTITÉ TOTALE ---
-        // On additionne la quantité de chaque entrée
         const totalQuantity = pos.entries ? pos.entries.reduce((sum, entry) => sum + entry.quantity, 0) : 0;
-        // --- FIN DE LA LOGIQUE AJOUTÉE ---
 
-        const row = allPositionsBody.insertRow();
         row.innerHTML = `
             <td class="text-muted small">${formatDate(pos.entries[0].date)}</td>
-            <td class="text-muted small">${formatDate(getClosingDate(pos))}</td>
-            <td class="small">${formatDuration(getClosingDate(pos) - pos.entries[0].date)}</td>
+            <td class="text-muted small">${formatDate(closingDate)}</td>
+            <td class="small">${formatDuration(durationMs)}</td>
             <td class="fw-bold">${pos.asset}</td>
             <td>${typeBadge}</td>
             <td class="text-center">${efficiencyBadge}</td>
@@ -1043,12 +1293,12 @@ function renderClosedPositionsHistory() {
             </td>`;
     });
 }
+
 function updateDashboardStats() {
-    // On peut garder les logs pour le moment, c'est utile
     console.log("--- DIAGNOSTIC TABLEAU DE BORD ---");
     console.log("Nombre total de positions pour les stats :", allClosedPositionsForStats.length);
 
-    const totalPnLByCurrency = {}; // Un objet pour stocker: { "USD": 596.10, "EUR": -25.50 }
+    const totalPnLByCurrency = {}; 
     let winningPositions = 0;
 
     allClosedPositionsForStats.forEach(pos => {
@@ -1067,35 +1317,28 @@ function updateDashboardStats() {
 
     console.log(`Calcul du Win Rate: ${winningPositions} (gains) / ${allClosedPositionsForStats.length} (total) = ${winRate.toFixed(2)}%`);
 
-    // ---- LOGIQUE D'AFFICHAGE DU P&L PAR DEVISE + CONVERSION ----
     if (totalProfitLossSpan) {
-        totalProfitLossSpan.innerHTML = ''; // On vide l'ancien contenu
+        totalProfitLossSpan.innerHTML = '';
         const sortedCurrencies = Object.keys(totalPnLByCurrency).sort();
 
         if (sortedCurrencies.length === 0) {
             totalProfitLossSpan.innerHTML = '0.00';
         } else {
-            // Calcul du total en EUR et USD
             let totalInEUR = 0;
             let totalInUSD = 0;
 
-            // Conversion vers EUR et USD pour chaque devise
             sortedCurrencies.forEach(currency => {
                 const pnl = totalPnLByCurrency[currency];
 
-                // Conversion vers EUR et USD
                 if (currency === 'EUR') {
                     totalInEUR += pnl;
                     totalInUSD += pnl * eurToUsdRate;
                 } else if (currency === 'USD') {
                     totalInEUR += pnl / eurToUsdRate;
                     totalInUSD += pnl;
-                } else {
-                    // Pour les autres devises, on les ignore dans la conversion pour le moment
                 }
             });
 
-            // Afficher le total converti sur une seule ligne
             if (sortedCurrencies.includes('EUR') || sortedCurrencies.includes('USD')) {
                 const color = totalInUSD >= 0 ? 'green' : 'red';
                 const sign = totalInUSD >= 0 ? '+' : '';
@@ -1109,7 +1352,6 @@ function updateDashboardStats() {
                     </small>
                 `;
             } else {
-                // Si pas de EUR ou USD, afficher les devises originales
                 sortedCurrencies.forEach(currency => {
                     const pnl = totalPnLByCurrency[currency];
                     const color = pnl >= 0 ? 'green' : 'red';
@@ -1126,7 +1368,7 @@ function updateDashboardStats() {
 function renderLastClosedPositions() {
     if (!lastTradesBody) return;
     lastTradesBody.innerHTML = '';
-    const lastFive = closedPositions.slice(0, 5);
+    const lastFive = allClosedPositionsForStats.slice(0, 5);
     if (lastFive.length === 0) {
         lastTradesBody.innerHTML = '<tr><td colspan="4" class="text-center">Aucune position clôturée récente.</td></tr>';
         return;
@@ -1134,12 +1376,27 @@ function renderLastClosedPositions() {
     lastFive.forEach(pos => {
         const pnl = calculatePositionPnL(pos);
         const row = lastTradesBody.insertRow();
-        row.innerHTML = `
-            <td>${formatDate(getClosingDate(pos))}</td>
-            <td>${pos.asset}</td>
-            <td>${pos.type === 'long' ? 'Achat' : 'Vente'}</td>
-            <td style="color: ${pnl >= 0 ? 'green' : 'red'};">${pnl.toFixed(2)} ${pos.currency}</td>
-        `;
+        const closeDate = getClosingDate(pos);
+
+        if (pos._isOption) {
+            const opt = pos._optionData;
+            const typeLbl = opt.optionType === 'call'
+                ? (opt.side === 'buy' ? 'Achat CALL' : 'Vente CALL')
+                : (opt.side === 'buy' ? 'Achat PUT' : 'Vente PUT');
+            row.innerHTML = `
+                <td>${closeDate ? formatDate(closeDate) : '-'}</td>
+                <td>${pos.asset} <span style="font-size:0.7em;color:#a78bfa;" title="Option">🎯</span></td>
+                <td>${typeLbl}</td>
+                <td style="color: ${pnl >= 0 ? 'green' : 'red'};">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</td>
+            `;
+        } else {
+            row.innerHTML = `
+                <td>${formatDate(closeDate)}</td>
+                <td>${pos.asset}</td>
+                <td>${pos.type === 'long' ? 'Achat' : 'Vente'}</td>
+                <td style="color: ${pnl >= 0 ? 'green' : 'red'};">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} ${pos.currency}</td>
+            `;
+        }
     });
 }
 
@@ -1494,7 +1751,8 @@ async function switchTitleAccount(accountId) {
         await Promise.all([
             fetchStaticData(),
             fetchData(),
-            fetchAllClosedPositionsForStats()
+            fetchAllClosedPositionsForStats(),
+            fetchStockPricesFromGoogleSheet()
         ]);
         updateAllViews();
     } catch (error) {
@@ -1956,15 +2214,50 @@ accountForm.addEventListener('submit', async (e) => {
 
 
 
-// --- Logique de Tri de l'Historique ---
+// --- Logique de Tri & Filtrage de l'Historique ---
 window.isCustomSortActive = false;
-let currentSortColumn = 'entry-date';
+let currentSortColumn = 'exit-date';
 let currentSortDirection = 'desc';
+let historyTypeFilter = 'all'; // 'all' | 'stocks' | 'options'
+
+window.setHistoryFilter = function(filter) {
+    historyTypeFilter = filter;
+    currentPage = 1;
+    document.querySelectorAll('#history-type-filters button').forEach(btn => {
+        if (btn.dataset.filter === filter) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    applySortingAndRender();
+};
 
 function applySortingAndRender() {
-    if (!allClosedPositionsForStats || allClosedPositionsForStats.length === 0) return;
+    if (!allClosedPositionsForStats) return;
 
-    allClosedPositionsForStats.sort((a, b) => {
+    // 1. Mettre à jour les compteurs des badges de filtre
+    const totalAll = allClosedPositionsForStats.length;
+    const totalOptions = allClosedPositionsForStats.filter(p => p._isOption).length;
+    const totalStocks = totalAll - totalOptions;
+
+    const countAllEl = document.getElementById('filter-count-all');
+    const countStocksEl = document.getElementById('filter-count-stocks');
+    const countOptionsEl = document.getElementById('filter-count-options');
+    if (countAllEl) countAllEl.textContent = totalAll;
+    if (countStocksEl) countStocksEl.textContent = totalStocks;
+    if (countOptionsEl) countOptionsEl.textContent = totalOptions;
+
+    // 2. Filtrer selon le type sélectionné
+    let filteredPositions = [...allClosedPositionsForStats];
+    if (historyTypeFilter === 'stocks') {
+        filteredPositions = filteredPositions.filter(p => !p._isOption);
+    } else if (historyTypeFilter === 'options') {
+        filteredPositions = filteredPositions.filter(p => p._isOption);
+    }
+
+    // 3. Trier les positions filtrées
+    filteredPositions.sort((a, b) => {
         let valA, valB;
         if (currentSortColumn === 'entry-date') {
             valA = a.entries && a.entries.length > 0 ? a.entries[0].date.getTime() : 0;
@@ -1980,6 +2273,8 @@ function applySortingAndRender() {
         } else if (currentSortColumn === 'pnl') {
             valA = calculatePositionPnL(a);
             valB = calculatePositionPnL(b);
+        } else {
+            valA = 0; valB = 0;
         }
 
         if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
@@ -1987,14 +2282,17 @@ function applySortingAndRender() {
         return 0;
     });
 
-    totalClosedPositionsCount = allClosedPositionsForStats.length;
+    // 4. Pagination
+    totalClosedPositionsCount = filteredPositions.length;
     totalPages = Math.ceil(totalClosedPositionsCount / POSITIONS_PER_PAGE) || 1;
-    
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
     const startIndex = (currentPage - 1) * POSITIONS_PER_PAGE;
     const endIndex = startIndex + POSITIONS_PER_PAGE;
-    
-    closedPositions = allClosedPositionsForStats.slice(startIndex, endIndex);
-    
+
+    closedPositions = filteredPositions.slice(startIndex, endIndex);
+
     updatePaginationControls(closedPositions.length);
     renderClosedPositionsHistory();
 }
@@ -2007,7 +2305,7 @@ window.sortHistory = function(column) {
         currentSortColumn = column;
         currentSortDirection = 'desc';
     }
-    
+
     document.querySelectorAll('th.sortable i').forEach(icon => {
         icon.className = 'bi bi-arrow-down-up text-muted ms-1';
     });
@@ -2018,7 +2316,7 @@ window.sortHistory = function(column) {
             activeIcon.className = currentSortDirection === 'asc' ? 'bi bi-arrow-up text-primary ms-1' : 'bi bi-arrow-down text-primary ms-1';
         }
     }
-    
+
     currentPage = 1;
     applySortingAndRender();
 };
@@ -2102,21 +2400,47 @@ function calculatePositionMetrics(position) {
     };
 }
 function calculatePositionPnL(position) {
+    // Cas option : utiliser la formule spécifique options
+    if (position._isOption) {
+        const opt = position._optionData;
+        const contracts = parseFloat(opt.contracts) || 1;
+        const multiplier = parseFloat(opt.multiplier) || 100;
+        const entryPrem = parseFloat(opt.premiumPrice) || 0;
+        const closePrem = parseFloat(opt.closePremiumPrice) || 0;
+        const entryComm = parseFloat(opt.entryCommission) || 0;
+        const exitComm = parseFloat(opt.exitCommission) || 0;
+        const entryTotal = entryPrem * contracts * multiplier;
+        const closeTotal = closePrem * contracts * multiplier;
+        let grossPnL = 0;
+        if (opt.closeReason === 'expired_otm') {
+            grossPnL = opt.side === 'sell' ? entryTotal : -entryTotal;
+        } else if (opt.side === 'buy') {
+            grossPnL = closeTotal - entryTotal;
+        } else {
+            grossPnL = entryTotal - closeTotal;
+        }
+        return grossPnL - entryComm - exitComm;
+    }
+
+    // Cas action : logique existante
     const metrics = calculatePositionMetrics(position);
     let pnlBrut = 0;
-
     if (position.type === 'long') {
         pnlBrut = metrics.totalExitValue - metrics.totalCost;
     } else { // short
         pnlBrut = metrics.totalCost - metrics.totalExitValue;
     }
-
-    // Soustraire le total des frais pour obtenir le P&L Net
     return pnlBrut - metrics.totalFees;
 }
 function getClosingDate(position) {
+    // Cas option : utiliser le champ closeDate (string ISO)
+    if (position._isOption) {
+        if (!position._optionData.closeDate) return null;
+        const d = new Date(position._optionData.closeDate);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    // Cas action : date la plus récente dans exits[]
     if (!position.exits || position.exits.length === 0) return null;
-    // Trouve la date la plus récente dans le tableau des sorties
     return position.exits.reduce((latest, exit) => exit.date > latest ? exit.date : latest, position.exits[0].date);
 }
 // --- Initialisation ---
@@ -2147,29 +2471,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     // Gestion des boutons de pagination pour l'historique
-    nextPageBtn.addEventListener('click', async () => {
-        if (!nextPageBtn.disabled) {
+    nextPageBtn.addEventListener('click', () => {
+        if (!nextPageBtn.disabled && currentPage < totalPages) {
             currentPage++;
-            if (window.isCustomSortActive) {
-                applySortingAndRender();
-            } else {
-                await fetchData('next');
-                renderClosedPositionsHistory();
-            }
+            applySortingAndRender();
         }
     });
-    prevPageBtn.addEventListener('click', async () => {
-        if (!prevPageBtn.disabled) {
+    prevPageBtn.addEventListener('click', () => {
+        if (!prevPageBtn.disabled && currentPage > 1) {
             currentPage--;
-            if (window.isCustomSortActive) {
-                applySortingAndRender();
-            } else {
-                await fetchData();
-                for (let i = 1; i < currentPage; i++) {
-                    await fetchData('next');
-                }
-                renderClosedPositionsHistory();
-            }
+            applySortingAndRender();
         }
     });
     initChartEventListeners(() => {
@@ -2202,6 +2513,28 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('theme', newTheme);
         applyTheme(newTheme);
     });
+
+    // --- BOUTON D'ACTUALISATION DES COURS EN DIRECT ---
+    const refreshPricesBtn = document.getElementById('refresh-prices-btn');
+    const pricesSyncStatus = document.getElementById('prices-sync-status');
+    if (refreshPricesBtn) {
+        refreshPricesBtn.addEventListener('click', async () => {
+            const icon = refreshPricesBtn.querySelector('i');
+            if (icon) icon.classList.add('spin');
+            refreshPricesBtn.disabled = true;
+            if (pricesSyncStatus) pricesSyncStatus.textContent = 'Actualisation des cours en cours...';
+
+            await fetchStockPricesFromGoogleSheet();
+
+            if (icon) icon.classList.remove('spin');
+            refreshPricesBtn.disabled = false;
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (pricesSyncStatus) {
+                pricesSyncStatus.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i>Actualisé à ${timeStr} (${liveStockPricesMap.size} tickers)`;
+            }
+        });
+    }
 });
 
 

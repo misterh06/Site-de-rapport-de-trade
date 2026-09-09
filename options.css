@@ -1,0 +1,150 @@
+/* options.css - Design & Styles spécifiques pour le Module Options Trading */
+
+/* Badges pour les Types d'Options */
+.badge-call-buy {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.45em 0.75em;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.badge-call-sell {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.45em 0.75em;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(6, 182, 212, 0.3);
+}
+
+.badge-put-buy {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.45em 0.75em;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+
+.badge-put-sell {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.45em 0.75em;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);
+}
+
+/* Badges DTE (Days To Expiration) */
+.badge-dte-safe {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-weight: 600;
+}
+
+.badge-dte-warning {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    font-weight: 600;
+    animation: pulse-warning 2s infinite;
+}
+
+.badge-dte-danger {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    font-weight: 600;
+}
+
+.badge-dte-expired {
+    background-color: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.4);
+}
+
+@keyframes pulse-warning {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* Cover Status Badges */
+.badge-covered {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-size: 0.8em;
+    font-weight: 500;
+}
+
+.badge-uncovered {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    font-size: 0.8em;
+    font-weight: 500;
+}
+
+.badge-cash-secured {
+    background-color: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    font-size: 0.8em;
+    font-weight: 500;
+}
+
+/* Glassmorphism Cards */
+.options-stat-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.options-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.options-table-container {
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+}
+
+/* Highlights tables */
+.table-options tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Quick Action Buttons in Table */
+.btn-action-otm {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    transition: all 0.2s ease;
+}
+
+.btn-action-otm:hover {
+    background: #10b981;
+    color: #ffffff;
+}
+
+.btn-action-close {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    transition: all 0.2s ease;
+}
+
+.btn-action-close:hover {
+    background: #3b82f6;
+    color: #ffffff;
+}

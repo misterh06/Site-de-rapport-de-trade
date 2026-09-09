@@ -22,30 +22,72 @@
             <!-- Barre de navigation latérale -->
             <nav class="col-md-2 d-none d-md-block sidebar" id="main-sidebar">
                 <div class="position-sticky pt-3">
-                    <h4 class="text-center my-4">Mon Journal de Trading</h4>
+                    <div class="brand-container text-center mb-4">
+                        <h4 class="mb-0 fw-bold text-white d-flex align-items-center justify-content-center">
+                            <i class="bi bi-graph-up-arrow text-info me-2 fs-3"></i>
+                            <span>Trading Journal</span>
+                        </h4>
+                        <small class="text-white-50" style="font-size: 0.7rem;">PORTFOLIO & ANALYTICS</small>
+                    </div>
+
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link" href="#" data-section="dashboard">Tableau de Bord</a>
+                        <!-- CATEGORY 1: TRADING ACTIF & OPTIONS -->
+                        <li class="sidebar-category-title">
+                            <i class="bi bi-activity text-info"></i>Trading Actif
                         </li>
-                        <li class="nav-item"><a class="nav-link" href="#" data-section="open-positions">Positions
-                                Ouvertes</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#" data-section="trade-history">Historique des
-                                Positions</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#" data-section="reports-analytics">Rapports &
-                                Statistiques</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#" data-section="account-management">Gestion du
-                                Compte</a></li>
-                        <li class="nav-item mt-3">
-                            <a class="nav-link text-warning" href="pea.html">
-                                <i class="bi bi-bank me-2"></i>Mon PEA (Long Terme)
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="dashboard">
+                                <i class="bi bi-speedometer2 me-2"></i>Tableau de Bord
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-info" href="enfants.html">
-                                <i class="bi bi-stars me-2"></i>Compte Enfants
+                            <a class="nav-link text-warning fw-bold" href="options.html">
+                                <i class="bi bi-diagram-3-fill me-2"></i>Options Trading
+                                <span class="badge bg-warning text-dark nav-badge">HOT</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="open-positions">
+                                <i class="bi bi-card-checklist me-2"></i>Positions Actions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="trade-history">
+                                <i class="bi bi-clock-history me-2"></i>Historique Trades
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="reports-analytics">
+                                <i class="bi bi-bar-chart-line me-2"></i>Rapports & Stats
+                            </a>
+                        </li>
+
+                        <!-- CATEGORY 2: INVESTISSEMENT LONG TERME -->
+                        <li class="sidebar-category-title">
+                            <i class="bi bi-bank text-warning"></i>Portefeuilles
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pea.html">
+                                <i class="bi bi-pie-chart-fill me-2 text-warning"></i>Mon PEA (Long Terme)
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="enfants.html">
+                                <i class="bi bi-stars me-2 text-info"></i>Compte Enfants
+                            </a>
+                        </li>
+
+                        <!-- CATEGORY 3: COMPTE & SOLDE -->
+                        <li class="sidebar-category-title">
+                            <i class="bi bi-wallet2 text-success"></i>Gestion
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="account-management">
+                                <i class="bi bi-gear-fill me-2"></i>Gestion & Balances
                             </a>
                         </li>
                     </ul>
-                    <hr>
+                    <hr class="my-3 border-secondary">
 
                     <div class="text-center px-3">
                         <p id="user-display" class="text-light small"></p>
@@ -64,8 +106,15 @@
                     <h1 class="h2" id="section-title">Chargement...</h1>
                     
                     <!-- Sélecteur de compte dans l'en-tête -->
-                    <div class="d-flex align-items-center mb-2">
-                        <span class="text-muted small me-2 d-none d-sm-inline"><i class="bi bi-bank2 text-info me-1"></i>Compte :</span>
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <!-- Badge Taux EUR/USD depuis Google Sheet -->
+                        <div class="d-flex align-items-center px-2 py-1 rounded-2" style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3);" title="Taux mis à jour depuis votre Google Sheet 'Taux de conversion'">
+                            <i class="bi bi-currency-exchange text-success me-1 small"></i>
+                            <span id="eur-usd-rate-display" class="text-success fw-bold small">1 EUR = … USD</span>
+                            <span class="badge bg-success bg-opacity-25 text-success ms-1" style="font-size: 0.6rem;">LIVE</span>
+                        </div>
+
+                        <span class="text-muted small d-none d-sm-inline"><i class="bi bi-bank2 text-info me-1"></i>Compte :</span>
                         <div class="account-switch-dropdown position-relative" style="min-width: 220px;">
                             <button id="account-switch-button" type="button" class="btn btn-sm account-switch-button text-start d-flex align-items-center justify-content-between w-100" aria-expanded="false">
                                 <span id="account-switch-label">Trading (U21752904)</span>
@@ -145,44 +194,57 @@
                                 <div class="card-header">Statistiques Clés</div>
                                 <div class="card-body">
                                     <h5>Profit/Perte Net Total</h5>
-                                    <div class="h3" id="total-profit-loss">
-                                        <hr>
-                                        <h5>Taux de Réussite</h5>
-                                        <p class="h3" id="win-rate">0%</p>
-                                        <hr>
-                                        <h5>Positions Clôturées</h5>
-                                        <p class="h3" id="total-trades">0</p>
+                                    <div class="h3" id="total-profit-loss">0.00 $</div>
+                                    <hr>
+                                    <h5>Taux de Réussite</h5>
+                                    <p class="h3" id="win-rate">0%</p>
+                                    <hr>
+                                    <h5>Positions Clôturées</h5>
+                                    <p class="h3" id="total-trades">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 mt-4">
+                            <div class="card shadow-sm">
+                                <div class="card-header">Dernières Positions Clôturées</div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date Clôture</th>
+                                                    <th>Actif</th>
+                                                    <th>Type</th>
+                                                    <th>P/L Réalisé</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="last-trades-body">
+                                                <!-- Données insérées par JS -->
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="card shadow-sm">
-                            <div class="card-header">Dernières Positions Clôturées</div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Date Clôture</th>
-                                                <th>Actif</th>
-                                                <th>Type</th>
-                                                <th>P/L Réalisé</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="last-trades-body">
-                                            <!-- Données insérées par JS -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                    </div>
                 </section>
 
                 <!-- Section Positions Ouvertes -->
                 <section id="open-positions" class="content-section">
 
-                    <button id="show-new-position-form-btn" class="btn btn-primary mb-3">Ouvrir une Nouvelle
-                        Position</button>
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <button id="show-new-position-form-btn" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i>Ouvrir une Nouvelle Position
+                        </button>
+                        <div class="d-flex align-items-center gap-2">
+                            <span id="prices-sync-status" class="small text-muted">
+                                <i class="bi bi-clock-history me-1"></i>Cours synchronisés via Google Sheets
+                            </span>
+                            <button id="refresh-prices-btn" class="btn btn-sm btn-outline-success" title="Actualiser les cours en direct depuis Google Sheet">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Actualiser les cours
+                            </button>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-striped table-hover">
                             <thead>
@@ -192,6 +254,8 @@
                                     <th>Quantité</th>
                                     <th>Prix d'Entrée Moyen</th>
                                     <th>Valeur Engagée</th>
+                                    <th>Cours Actuel (Live)</th>
+                                    <th>P/L Latent</th>
                                     <th>P/L Réalisé</th>
                                     <th>Actions</th>
                                 </tr>
@@ -203,7 +267,25 @@
 
                 <!-- Section Historique -->
                 <section id="trade-history" class="content-section">
-
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted small fw-semibold"><i class="bi bi-funnel me-1"></i>Filtrer :</span>
+                            <div class="btn-group btn-group-sm" role="group" id="history-type-filters">
+                                <button type="button" class="btn btn-outline-primary active" onclick="setHistoryFilter('all')" data-filter="all">
+                                    <i class="bi bi-collection me-1"></i>Tous <span class="badge bg-primary ms-1" id="filter-count-all">0</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" onclick="setHistoryFilter('stocks')" data-filter="stocks">
+                                    <i class="bi bi-graph-up me-1"></i>Actions <span class="badge bg-secondary ms-1" id="filter-count-stocks">0</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" onclick="setHistoryFilter('options')" data-filter="options">
+                                    <i class="bi bi-bullseye me-1"></i>Options <span class="badge bg-secondary ms-1" id="filter-count-options">0</span>
+                                </button>
+                            </div>
+                        </div>
+                        <a href="options.html" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-plus-circle me-1"></i>Gérer les Options
+                        </a>
+                    </div>
 
                     <div class="table-responsive">
                         <table class="table table-striped table-hover">

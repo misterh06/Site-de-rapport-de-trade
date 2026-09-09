@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Trading - Journal & Gestion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="dark-mode.css">
+    <link rel="stylesheet" href="account-glass.css">
+    <link rel="stylesheet" href="options.css?v=1">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Barre de Navigation Latérale -->
+            <nav class="col-md-2 d-none d-md-block sidebar" id="main-sidebar">
+                <div class="position-sticky pt-3">
+                    <div class="brand-container text-center mb-4">
+                        <h4 class="mb-0 fw-bold text-white d-flex align-items-center justify-content-center">
+                            <i class="bi bi-graph-up-arrow text-info me-2 fs-3"></i>
+                            <span>Trading Journal</span>
+                        </h4>
+                        <small class="text-white-50" style="font-size: 0.7rem;">PORTFOLIO & ANALYTICS</small>
+                    </div>
+
+                    <ul class="nav flex-column">
+                        <!-- CATEGORY 1: TRADING ACTIF & OPTIONS -->
+                        <li class="sidebar-category-title">
+                            <i class="bi bi-activity text-info"></i>Trading Actif
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html#dashboard">
+                                <i class="bi bi-speedometer2 me-2"></i>Tableau de Bord
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active text-warning fw-bold" href="options.html">
+                                <i class="bi bi-diagram-3-fill me-2"></i>Options Trading
+                                <span class="badge bg-warning text-dark nav-badge">HOT</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html#open-positions">
+                                <i class="bi bi-card-checklist me-2"></i>Positions Actions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html#trade-history">
+                                <i class="bi bi-clock-history me-2"></i>Historique Trades
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html#reports-analytics">
+                                <i class="bi bi-bar-chart-line me-2"></i>Rapports & Stats
+                            </a>
+                        </li>
+
+                        <!-- CATEGORY 2: INVESTISSEMENT LONG TERME -->
+                        <li class="sidebar-category-title">
+                            <i class="bi bi-bank text-warning"></i>Portefeuilles
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pea.html">
+                                <i class="bi bi-pie-chart-fill me-2 text-warning"></i>Mon PEA (Long Terme)
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="enfants.html">
+                                <i class="bi bi-stars me-2 text-info"></i>Compte Enfants
+                            </a>
+                        </li>
+
+                        <!-- CATEGORY 3: COMPTE & SOLDE -->
+                        <li class="sidebar-category-title">
+                            <i class="bi bi-wallet2 text-success"></i>Gestion
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html#account-management">
+                                <i class="bi bi-gear-fill me-2"></i>Gestion & Balances
+                            </a>
+                        </li>
+                    </ul>
+                    <hr class="my-3 border-secondary">
+                    <div class="text-center px-3">
+                        <p id="user-display" class="text-light small"></p>
+                        <button class="btn btn-outline-light btn-sm mb-2" id="logout-btn">Déconnexion</button>
+                        <button class="btn btn-outline-light btn-sm" id="theme-toggle-btn">
+                            <i class="bi bi-sun-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Contenu Principal -->
+            <main class="col-md-10 ms-sm-auto col-lg-10 px-md-4" id="main-content-area">
+                
+                <!-- En-tête avec Sélecteur de Compte -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2" id="section-title">
+                        <i class="bi bi-diagram-3-fill text-warning me-2"></i>Journal & Gestion des Options
+                    </h1>
+                    
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <!-- Badge Taux EUR/USD depuis Google Sheet -->
+                        <div class="d-flex align-items-center px-2 py-1 rounded-2" style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3);" title="Taux mis à jour depuis votre Google Sheet 'Taux de conversion'">
+                            <i class="bi bi-currency-exchange text-success me-1 small"></i>
+                            <span id="eur-usd-rate-display" class="text-success fw-bold small">1 EUR = … USD</span>
+                            <span class="badge bg-success bg-opacity-25 text-success ms-1" style="font-size: 0.6rem;">LIVE</span>
+                        </div>
+
+                        <span class="text-muted small d-none d-sm-inline">
+                            <i class="bi bi-bank2 text-info me-1"></i>Compte :
+                        </span>
+                        <div class="account-switch-dropdown position-relative" style="min-width: 220px;">
+                            <button id="account-switch-button" type="button" class="btn btn-sm account-switch-button text-start d-flex align-items-center justify-content-between w-100" aria-expanded="false">
+                                <span id="account-switch-label">Trading (U21752904)</span>
+                                <i class="bi bi-chevron-down ms-2"></i>
+                            </button>
+                            <div id="account-switch-menu" class="account-switch-menu shadow-lg" role="menu" aria-label="Choisir un compte"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auth Section (Si non connecté) -->
+                <section id="auth-section" class="content-section" style="display: none;">
+                    <div class="alert alert-warning text-center my-4">
+                        <h5><i class="bi bi-lock-fill me-2"></i>Connexion requise</h5>
+                        <p class="mb-0">Veuillez vous connecter depuis la <a href="index.html">page principale</a> pour accéder à la gestion de vos options.</p>
+                    </div>
+                </section>
+
+                <!-- Section Principale Options -->
+                <div id="options-app-content">
+                    
+                    <!-- KPI Cards (Cartes Statistiques) -->
+                    <div class="row g-3 mb-4">
+                        <!-- Total P/L Réalisé -->
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card options-stat-card text-white h-100 p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="text-white-50 small mb-1">P/L Réalisé Options</p>
+                                        <h3 class="fw-bold mb-0" id="stat-total-pnl">$0.00</h3>
+                                    </div>
+                                    <div class="p-3 bg-primary bg-opacity-20 rounded-circle text-primary">
+                                        <i class="bi bi-currency-dollar fs-3"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Primes Encaissées (Crédit Net) -->
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card options-stat-card text-white h-100 p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="text-white-50 small mb-1">Primes Nettes Encaissées</p>
+                                        <h3 class="fw-bold mb-0 text-success" id="stat-net-premiums">$0.00</h3>
+                                    </div>
+                                    <div class="p-3 bg-success bg-opacity-20 rounded-circle text-success">
+                                        <i class="bi bi-piggy-bank fs-3"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Collateral Mobilisé (Cash Secured Put / Covered Call) -->
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card options-stat-card text-white h-100 p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="text-white-50 small mb-1">Collateral Réservé (Puts)</p>
+                                        <h3 class="fw-bold mb-0 text-purple" id="stat-collateral">$0.00</h3>
+                                    </div>
+                                    <div class="p-3 bg-info bg-opacity-20 rounded-circle text-info">
+                                        <i class="bi bi-shield-lock fs-3"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alertes Expiration Imminente (< 7j) -->
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card options-stat-card text-white h-100 p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="text-white-50 small mb-1">Expirations <= 7 jours</p>
+                                        <h3 class="fw-bold mb-0 text-warning" id="stat-expiring-soon">0</h3>
+                                    </div>
+                                    <div class="p-3 bg-warning bg-opacity-20 rounded-circle text-warning">
+                                        <i class="bi bi-exclamation-triangle fs-3"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions & Bouton Nouvelle Option -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="mb-0 fw-bold text-white">
+                            <i class="bi bi-lightning-charge text-warning me-2"></i>Positions sur Options Actives
+                        </h4>
+                        <button class="btn btn-warning fw-bold shadow-sm" id="btn-open-new-option">
+                            <i class="bi bi-plus-circle me-2"></i>Nouvelle Option
+                        </button>
+                    </div>
+
+                    <!-- Table des Positions Ouvertes -->
+                    <div class="options-table-container p-3 mb-5">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover align-middle table-options mb-0">
+                                <thead>
+                                    <tr class="text-white-50 border-secondary">
+                                        <th>Sous-Jacent</th>
+                                        <th>Type & Sens</th>
+                                        <th>Strike</th>
+                                        <th>Expiration & DTE</th>
+                                        <th>Contrats</th>
+                                        <th>Prime Entrée</th>
+                                        <th>Prime Totale</th>
+                                        <th>Statut / Couverture</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="open-options-table-body">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4 text-muted">
+                                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                            Aucune position sur option ouverte pour le compte sélectionné.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Graphiques Analytics Options -->
+                    <div class="row g-4 mb-5">
+                        <div class="col-lg-6">
+                            <div class="card options-stat-card text-white p-3 h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-pie-chart me-2 text-primary"></i>P/L par Type d'Option</h5>
+                                <div style="height: 280px; position: relative;">
+                                    <canvas id="chart-option-types"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card options-stat-card text-white p-3 h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-line me-2 text-success"></i>Primes Mensuelles Encaissées</h5>
+                                <div style="height: 280px; position: relative;">
+                                    <canvas id="chart-monthly-premiums"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table des Positions Clôturées -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0 fw-bold text-white">
+                            <i class="bi bi-archive me-2 text-info"></i>Historique des Options Clôturées
+                        </h4>
+                    </div>
+
+                    <div class="options-table-container p-3 mb-5">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover align-middle table-options mb-0">
+                                <thead>
+                                    <tr class="text-white-50 border-secondary">
+                                        <th>Date Clôture</th>
+                                        <th>Sous-Jacent</th>
+                                        <th>Type & Sens</th>
+                                        <th>Strike</th>
+                                        <th>Prime Entrée</th>
+                                        <th>Prime Sortie</th>
+                                        <th>Mode Clôture</th>
+                                        <th>P/L Réalisé</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="closed-options-table-body">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4 text-muted">
+                                            <i class="bi bi-clock-history fs-2 d-block mb-2"></i>
+                                            Aucune option clôturée.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- MODALE 1 : NOUVELLE POSITION SUR OPTION -->
+    <div class="modal fade" id="newOptionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark text-white border-secondary shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-warning" id="opt-modal-title">
+                        <i class="bi bi-plus-circle me-2"></i>Ouvrir une Position sur Option
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-new-option">
+                        <input type="hidden" id="opt-editing-id">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label for="opt-ticker" class="form-label small fw-bold">Sous-Jacent (Ticker)</label>
+                                <input type="text" class="form-control bg-secondary bg-opacity-20 text-white border-secondary text-uppercase" id="opt-ticker" placeholder="Ex: AAPL, SPY, NVDA" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="opt-type" class="form-label small fw-bold">Type d'Option</label>
+                                <select class="form-select bg-secondary bg-opacity-20 text-white border-secondary fw-bold" id="opt-type" required>
+                                    <option value="call">CALL (Haussier / Obligation de vente)</option>
+                                    <option value="put">PUT (Baissier / Obligation d'achat)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="opt-side" class="form-label small fw-bold">Sens (Position)</label>
+                                <select class="form-select bg-secondary bg-opacity-20 text-white border-secondary fw-bold" id="opt-side" required>
+                                    <option value="sell">🔴 VENTE (Short / Encaisser la prime - Covered Call / Cash-Secured)</option>
+                                    <option value="buy">🟢 ACHAT (Long / Payer la prime - Spéculation / Protection)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Guide Dynamique Explicatif -->
+                        <div id="opt-strategy-explanation" class="alert alert-info border-info p-2 mb-3 small">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <span id="opt-explanation-text"></span>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label for="opt-strike" class="form-label small fw-bold">Prix du Strike ($)</label>
+                                <input type="number" step="0.01" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-strike" placeholder="Ex: 150.00" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="opt-expiration" class="form-label small fw-bold">Date d'Expiration</label>
+                                <input type="date" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-expiration" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="opt-entry-date" class="form-label small fw-bold">Date & Heure d'Entrée</label>
+                                <input type="datetime-local" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-entry-date" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label for="opt-contracts" class="form-label small fw-bold">Nb de Contrats</label>
+                                <input type="number" step="1" min="1" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-contracts" value="1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="opt-premium" class="form-label small fw-bold">Prime par Action ($)</label>
+                                <input type="number" step="0.01" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-premium" placeholder="Ex: 2.50" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="opt-commission" class="form-label small fw-bold">Commission Entrée ($)</label>
+                                <input type="number" step="0.01" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-commission" value="1.00" placeholder="Ex: 1.00">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="opt-multiplier" class="form-label small fw-bold">Multiplicateur</label>
+                                <input type="number" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-multiplier" value="100" required>
+                            </div>
+                        </div>
+
+                        <!-- Calculateur automatique de Prime & Collateral -->
+                        <div class="alert alert-dark border-secondary p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-white-50">Prime Brute Engagée :</span>
+                                <span class="fw-bold fs-5 text-warning" id="opt-calc-total-premium">$0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-white-50">Prime Nette (après commission entrée) :</span>
+                                <span class="fw-bold text-success" id="opt-calc-net-premium">$0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center" id="opt-calc-collateral-row">
+                                <span class="text-white-50">Collateral Requis / Garanti :</span>
+                                <span class="fw-bold text-info" id="opt-calc-collateral">$0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Zone d'alerte Covered Call / Stocks de la page trading -->
+                        <div id="opt-covered-call-status" class="alert alert-success d-none mb-3">
+                            <i class="bi bi-shield-check me-2"></i>
+                            <span id="opt-covered-call-msg">Covered Call Sécurisé : Vous possédez au moins 100 actions de ce sous-jacent dans ce compte !</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="opt-notes" class="form-label small fw-bold">Notes & Thèse de Trade</label>
+                            <textarea class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="opt-notes" rows="2" placeholder="Stratégie (Wheel, Covered Call, Speculation, Hedge...)"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-warning fw-bold" id="btn-save-new-option">Enregistrer l'Option</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE 2 : CLÔTURER UNE OPTION -->
+    <div class="modal fade" id="closeOptionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white border-secondary shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-info">
+                        <i class="bi bi-flag me-2"></i>Clôturer l'Option <span id="close-opt-ticker-title"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="close-opt-id">
+                    
+                    <div class="mb-3">
+                        <label for="close-opt-reason" class="form-label small fw-bold">Mode de Clôture</label>
+                        <select class="form-select bg-secondary bg-opacity-20 text-white border-secondary" id="close-opt-reason" required>
+                            <option value="expired_otm">✅ Expiration Sans Valeur (OTM) - Gain/Perte 100% Prime</option>
+                            <option value="buy_to_close">🔄 Rachat anticipé (Buy to Close / Sell to Close)</option>
+                            <option value="exercised_itm">⚡ Exercice / Assignation (ITM)</option>
+                            <option value="other">💭 Autre motif</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label for="close-opt-date" class="form-label small fw-bold">Date & Heure de Clôture</label>
+                            <input type="datetime-local" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="close-opt-date" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="close-opt-premium" class="form-label small fw-bold">Prime Sortie ($ / action)</label>
+                            <input type="number" step="0.01" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="close-opt-premium" value="0.00" required>
+                            <div class="form-text text-white-50">0.00 si OTM.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="close-opt-commission" class="form-label small fw-bold">Commission Sortie ($)</label>
+                            <input type="number" step="0.01" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="close-opt-commission" value="1.00" placeholder="Ex: 1.00">
+                        </div>
+                    </div>
+
+                    <div class="alert alert-dark border-secondary p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-white-50">P/L Brut :</span>
+                            <span class="fw-bold text-white-50" id="close-opt-pnl-gross">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-white-50">Total Commissions (Entrée + Sortie) :</span>
+                            <span class="fw-bold text-warning" id="close-opt-commissions-total">$0.00</span>
+                        </div>
+                        <hr class="my-2 border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-white-50">P/L Net Réalisé :</span>
+                            <span class="fw-bold fs-5" id="close-opt-pnl-preview">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-info fw-bold text-dark" id="btn-confirm-close-option">Confirmer la Clôture</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Librairies externes JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Code applicatif Firebase & JS Options -->
+    <script type="module" src="firebase-config.js?v=2"></script>
+    <script type="module" src="options.js?v=1"></script>
+</body>
+
+</html>
