@@ -15,7 +15,8 @@
             Chart.register(window.ChartZoom);
         }
     </script>
-    <link rel="stylesheet" href="pea.css?v=20260727-02">
+    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="pea.css?v=20261117-02">
 </head>
 
 <body>
@@ -34,61 +35,73 @@
 
     <div class="container-fluid">
         <div class="row">
-            <!-- Navigation -->
-            <nav class="col-md-2 d-none d-md-block sidebar" id="pea-sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="brand-container text-center mb-4">
-                        <h4 class="mb-0 fw-bold text-white d-flex align-items-center justify-content-center">
-                            <i class="bi bi-bank text-warning me-2 fs-3"></i>
-                            <span>Mon PEA</span>
-                        </h4>
-                        <small class="text-white-50" style="font-size: 0.7rem;">INVESTISSEMENT LONG TERME</small>
+            <nav class="col-12 navbar navbar-expand-xl top-navigation" id="main-sidebar" aria-label="Navigation principale">
+                <div class="top-navigation-header">
+                    <div class="brand-container">
+                        <span class="brand-icon"><i class="bi bi-graph-up-arrow"></i></span>
+                        <span>
+                            <strong>Trading Journal</strong>
+                            <small>PORTFOLIO & ANALYTICS</small>
+                        </span>
                     </div>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#main-navigation" aria-controls="main-navigation" aria-expanded="false"
+                        aria-label="Afficher ou masquer le menu">
+                        <i class="bi bi-list"></i>
+                    </button>
+                </div>
 
-                    <ul class="nav flex-column">
-                        <!-- VUES DU PEA -->
-                        <li class="sidebar-category-title">
-                            <i class="bi bi-pie-chart text-warning"></i>Sections PEA
-                        </li>
-                        <li class="nav-item"><a class="nav-link active" href="#"><i
-                                    class="bi bi-speedometer2 me-2"></i>Synthèse</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#holdings"><i
-                                    class="bi bi-list-columns-reverse me-2"></i>Portefeuille</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#dividends"><i
-                                    class="bi bi-cash-coin me-2"></i>Dividendes</a></li>
-
-                        <!-- AUTRES MODULES DU SITE -->
-                        <li class="sidebar-category-title">
-                            <i class="bi bi-activity text-info"></i>Trading & Options
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-warning fw-bold" href="options.html">
-                                <i class="bi bi-diagram-3-fill me-2"></i>Options Trading
-                                <span class="badge bg-warning text-dark nav-badge">HOT</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.html">
-                                <i class="bi bi-journal-text me-2"></i>Journal Principal
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="enfants.html">
-                                <i class="bi bi-stars me-2 text-info"></i>Compte Enfants
-                            </a>
-                        </li>
-                    </ul>
-                    <hr class="my-3 border-secondary">
-                    <div class="px-3 text-center">
-                        <button class="btn btn-outline-light btn-sm w-100" id="theme-toggle-btn">
-                            <i class="bi bi-sun-fill me-2"></i>Changer Thème
-                        </button>
+                <div class="collapse navbar-collapse" id="main-navigation">
+                    <div class="top-navigation-groups">
+                        <div class="dropdown nav-cluster">
+                            <button class="btn dropdown-toggle nav-category-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-activity"></i>Trading
+                            </button>
+                            <div class="dropdown-menu nav-cluster-menu">
+                                <a class="dropdown-item nav-link" href="index.html#dashboard"><i class="bi bi-speedometer2"></i>Tableau de bord</a>
+                                <a class="dropdown-item nav-link" href="options.html"><i class="bi bi-diagram-3"></i>Options</a>
+                                <a class="dropdown-item nav-link" href="index.html#open-positions"><i class="bi bi-card-checklist"></i>Positions actions</a>
+                                <a class="dropdown-item nav-link" href="index.html#trade-history"><i class="bi bi-clock-history"></i>Historique des trades</a>
+                                <a class="dropdown-item nav-link" href="index.html#reports-analytics"><i class="bi bi-bar-chart-line"></i>Rapports & statistiques</a>
+                            </div>
+                        </div>
+                        <div class="dropdown nav-cluster">
+                            <button class="btn dropdown-toggle nav-category-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-pie-chart"></i>Sections PEA
+                            </button>
+                            <div class="dropdown-menu nav-cluster-menu">
+                                <a class="dropdown-item nav-link active" href="#pea-app-content" aria-current="page"><i class="bi bi-speedometer2"></i>Synthèse</a>
+                                <a class="dropdown-item nav-link" href="#holdings"><i class="bi bi-list-columns-reverse"></i>Portefeuille</a>
+                                <a class="dropdown-item nav-link" href="#dividends"><i class="bi bi-cash-coin"></i>Dividendes</a>
+                            </div>
+                        </div>
+                        <div class="dropdown nav-cluster">
+                            <button class="btn dropdown-toggle nav-category-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bank"></i>Portefeuilles
+                            </button>
+                            <div class="dropdown-menu nav-cluster-menu">
+                                <a class="dropdown-item nav-link active" href="pea.html" aria-current="page"><i class="bi bi-pie-chart"></i>PEA</a>
+                                <a class="dropdown-item nav-link" href="enfants.html"><i class="bi bi-stars"></i>Compte enfants</a>
+                            </div>
+                        </div>
+                        <div class="dropdown nav-cluster">
+                            <button class="btn dropdown-toggle nav-category-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-wallet2"></i>Gestion
+                            </button>
+                            <div class="dropdown-menu nav-cluster-menu">
+                                <a class="dropdown-item nav-link" href="index.html#account-management"><i class="bi bi-gear"></i>Comptes & soldes</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="top-navigation-actions">
+                        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle-btn" type="button"
+                            aria-label="Changer le thème"><i class="bi bi-sun-fill"></i></button>
                     </div>
                 </div>
             </nav>
 
             <!-- Contenu -->
-            <main class="col-md-10 ms-sm-auto col-lg-10 px-md-4">
+            <main class="col-12 px-3 px-lg-4">
 
                 <!-- Overlay Auth avec Formulaire de Connexion Direct -->
                 <div id="auth-overlay"
@@ -137,15 +150,16 @@
                             <button id="open-entry-rules-modal-btn" class="btn btn-outline-light me-2" type="button" data-bs-toggle="modal" data-bs-target="#entryRulesModal">
                                 <i class="bi bi-tools me-2"></i>Règles d'entrée
                             </button>
-                            <button id="theme-toggle-btn" class="btn btn-outline-secondary me-2">
-                                <i class="bi bi-moon-fill"></i>
-                            </button>
                             <a href="enfants.html" class="btn btn-outline-info me-2">
                                 <i class="bi bi-people-fill me-2"></i>Compte Enfants
                             </a>
                             <button type="button" class="btn btn-gold me-2 shadow-gold" data-bs-toggle="modal"
                                 data-bs-target="#operationModal">
                                 <i class="bi bi-plus-lg me-2"></i>Nouvelle Opération
+                            </button>
+                            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal"
+                                data-bs-target="#pea-trade-dictation-modal">
+                                <i class="bi bi-mic me-2"></i>Dicter un trade
                             </button>
                         </div>
                     </div>
@@ -219,7 +233,6 @@
                                         <thead class="text-secondary small text-uppercase">
                                             <tr>
                                                 <th class="ps-4 sortable" data-sort="asset" style="cursor: pointer;">Actif <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="sortable" data-sort="type" style="cursor: pointer;">Type <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="quantity" style="cursor: pointer;">Qté <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="pru" style="cursor: pointer;">PRU <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
                                                 <th class="text-end sortable" data-sort="price" style="cursor: pointer;">Cours <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
@@ -243,46 +256,78 @@
                                 </div>
                             </div>
 
-                            <div class="card glass-panel border-0 mt-4">
-                                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <button class="btn btn-link text-decoration-none text-reset p-0" id="asset-performance-toggle" style="text-align: left; flex: 1;">
-                                        <h6 class="mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Performance par action <i class="bi bi-chevron-right me-2" id="asset-performance-chevron" style="transition: transform 0.3s;"></i></h6>
-                                    </button>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <select id="asset-performance-status-filter" class="form-select form-select-sm bg-dark text-white border-secondary" style="min-width: 150px;">
-                                            <option value="all">Toutes</option>
-                                            <option value="open">Ouvertes</option>
+                            <div class="card glass-panel border-0 mt-4 asset-performance-card">
+                                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                    <div class="asset-performance-heading">
+                                        <span class="asset-performance-heading-icon"><i class="bi bi-graph-up-arrow"></i></span>
+                                        <div>
+                                            <h5 class="mb-1">Performance par action <span id="asset-performance-count" class="badge rounded-pill bg-secondary ms-1">0 position</span></h5>
+                                            <small class="text-white-50">Résultat depuis l’achat comparé aux signaux et à l’objectif de cours</small>
+                                        </div>
+                                    </div>
+                                    <div class="asset-performance-filter">
+                                        <label for="asset-performance-status-filter" class="form-label small text-white-50 mb-1">Afficher</label>
+                                        <select id="asset-performance-status-filter" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                            <option value="all">Toutes les positions</option>
+                                            <option value="open">En portefeuille</option>
                                             <option value="closed">Clôturées</option>
                                         </select>
-                                        <small class="text-white-50">Barres de P/L % sur capital versé</small>
                                     </div>
                                 </div>
-                                <div class="card-body p-0 table-responsive" id="asset-performance-content" style="display: none;">
-                                    <table id="asset-performance-table" class="table table-dark table-hover mb-0 align-middle">
-                                        <thead class="text-secondary small text-uppercase">
-                                            <tr>
-                                                <th class="ps-4 sortable" data-sort="asset" style="cursor: pointer;">Action <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-center sortable" data-sort="status" style="cursor: pointer;">Statut <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-center">Note</th>
-                                                <th class="text-center">Technique</th>
-                                                <th class="text-end sortable" data-sort="targetPrice1Y" style="cursor: pointer;">Objectif 1 an <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-end sortable" data-sort="weight" style="cursor: pointer;">Poids <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-end sortable" data-sort="pnl" style="cursor: pointer;">P/L % <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i></th>
-                                                <th class="text-end pe-4">Barre</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="asset-performance-body">
-                                            <!-- Rempli par JS -->
-                                        </tbody>
-                                    </table>
+                                <div id="asset-performance-content" class="card-body p-0">
+                                    <div class="asset-performance-summary">
+                                        <div class="asset-performance-summary-item asset-performance-summary-main">
+                                            <span class="asset-performance-summary-icon summary-icon-pnl"><i class="bi bi-currency-euro"></i></span>
+                                            <span>
+                                                <small>P/L net cumulé</small>
+                                                <strong id="asset-performance-total-pnl" class="text-success">0 €</strong>
+                                            </span>
+                                        </div>
+                                        <div class="asset-performance-summary-item">
+                                            <span class="asset-performance-summary-icon summary-icon-analyst"><i class="bi bi-person-lines-fill"></i></span>
+                                            <span>
+                                                <small>Prévisions analystes confirmées</small>
+                                                <strong id="asset-performance-analyst-summary">Aucune prévision</strong>
+                                            </span>
+                                        </div>
+                                        <div class="asset-performance-summary-item">
+                                            <span class="asset-performance-summary-icon summary-icon-technical"><i class="bi bi-activity"></i></span>
+                                            <span>
+                                                <small>Prévisions techniques confirmées</small>
+                                                <strong id="asset-performance-technical-summary">Aucune prévision</strong>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table id="asset-performance-table" class="table table-dark table-hover align-middle mb-0 asset-performance-table">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col" class="ps-4">
+                                                        <button type="button" class="asset-performance-sort" data-sort="asset">
+                                                            Action <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
+                                                        </button>
+                                                    </th>
+                                                    <th scope="col">Analyste</th>
+                                                    <th scope="col">Technique</th>
+                                                    <th scope="col">Objectif 1 an</th>
+                                                    <th scope="col" class="text-end">
+                                                        <button type="button" class="asset-performance-sort" data-sort="pnl">
+                                                            Résultat position <i class="bi bi-arrow-down" aria-hidden="true"></i>
+                                                        </button>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="asset-performance-body"></tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Graphique Évolution des Gains / Pertes (pleine largeur) -->
-                    <div class="row mb-5">
-                        <div class="col-12">
+                    <!-- Évolution des gains / pertes et récapitulatif des dividendes -->
+                    <div class="row g-3 mb-5 align-items-stretch">
+                        <div class="col-lg-8">
                             <div class="card glass-panel border-0">
                                 <div class="card-header bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
                                     <div class="d-flex align-items-center gap-2">
@@ -310,6 +355,34 @@
                                 </div>
                                 <div class="card-body" style="height: 280px; position: relative;">
                                     <canvas id="pnlEvolutionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card glass-panel border-0 h-100">
+                                <div class="card-header bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <h5 class="card-title mb-0"><i class="bi bi-cash-coin text-warning me-2"></i>Dividendes par action</h5>
+                                    <span class="small text-white-50">Cumul reçu</span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive dividend-summary-scroll">
+                                        <table id="dividend-summary-table" class="table table-dark table-hover table-sm align-middle mb-0">
+                                            <thead class="text-secondary small text-uppercase">
+                                                <tr>
+                                                    <th class="ps-3">Action</th>
+                                                    <th class="text-center">Versements</th>
+                                                    <th class="text-end pe-3">Montant reçu</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="dividend-summary-body"></tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <th colspan="2" class="ps-3">Total reçu</th>
+                                                    <th id="dividend-summary-total" class="text-end pe-3 text-success">0 €</th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -639,6 +712,41 @@
         </div>
     </div>
 
+    <!-- Modal Dictée de trade -->
+    <div class="modal fade" id="pea-trade-dictation-modal" tabindex="-1" aria-labelledby="pea-trade-dictation-title">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-modal text-white">
+                <div class="modal-header border-bottom border-light-subtle">
+                    <h5 class="modal-title" id="pea-trade-dictation-title">
+                        <i class="bi bi-mic me-2"></i>Dicter un trade pour le PEA
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-white-50">Dictez votre prise de trade, relisez ou corrigez la transcription, puis envoyez-la à l’agent IA.</p>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button type="button" class="btn btn-outline-warning" id="pea-dictation-start-btn">
+                            <i class="bi bi-mic-fill me-2"></i>Démarrer la dictée
+                        </button>
+                        <button type="button" class="btn btn-outline-light" id="pea-dictation-stop-btn" disabled>
+                            <i class="bi bi-stop-fill me-2"></i>Arrêter
+                        </button>
+                    </div>
+                    <label for="pea-dictation-text" class="form-label">Transcription</label>
+                    <textarea id="pea-dictation-text" class="form-control bg-dark text-white border-secondary"
+                        rows="5" placeholder="Votre transcription apparaîtra ici. Vous pouvez aussi saisir le texte."></textarea>
+                    <div id="pea-dictation-status" class="small text-white-50 mt-2" role="status" aria-live="polite">
+                        La dictée utilise la reconnaissance vocale de votre navigateur.
+                    </div>
+                    <button type="button" class="btn btn-success w-100 fw-bold mt-3" id="pea-dictation-send-btn">
+                        <i class="bi bi-send me-2"></i>Envoyer à l’agent IA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Édition Position (Groupée) -->
     <div class="modal fade" id="editPEAPositionModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -854,7 +962,7 @@
             }
         }
     </script>
-    <script type="module" src="pea.js?v=20260727-02"></script>
+    <script type="module" src="pea.js?v=20261117-04"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

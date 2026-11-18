@@ -414,10 +414,10 @@ export function renderCharts(allClosedPositionsForStats, strategies, getClosingD
         allClosedPositionsForStats.forEach(pos => {
             if (!assetStats[pos.asset]) assetStats[pos.asset] = { total: 0, wins: 0 };
             assetStats[pos.asset].total++;
-            if (calculatePositionPnL(pos) >= 0) assetStats[pos.asset].wins++;
+            if (calculatePositionPnL(pos) > 0) assetStats[pos.asset].wins++;
         });
         const labels = Object.keys(assetStats);
-        const data = labels.map(asset => (assetStats[asset].wins / assetStats[asset].total) * 100);
+        const data = labels.map(asset => assetStats[asset].total > 0 ? (assetStats[asset].wins / assetStats[asset].total) * 100 : 0);
 
         winRateByAssetChartInstance = new Chart(winRateByAssetCtx, {
             type: 'bar',
@@ -446,7 +446,19 @@ export function renderCharts(allClosedPositionsForStats, strategies, getClosingD
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: context => {
+                                const stats = assetStats[labels[context[0].dataIndex]];
+                                return [
+                                    `${stats.wins} / ${stats.total} — Trades gagnants / total des trades clôturés`
+                                ];
+                            }
+                        }
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -464,7 +476,7 @@ export function renderCharts(allClosedPositionsForStats, strategies, getClosingD
     if (monthlyActivityCtx) {
         const monthlyTotals = Array(12).fill(0);
         const monthlyWins = Array(12).fill(0);
-        positionsForYear.forEach(pos => { const monthIndex = getClosingDate(pos).getMonth(); monthlyTotals[monthIndex]++; if (calculatePositionPnL(pos) >= 0) monthlyWins[monthIndex]++; });
+        positionsForYear.forEach(pos => { const monthIndex = getClosingDate(pos).getMonth(); monthlyTotals[monthIndex]++; if (calculatePositionPnL(pos) > 0) monthlyWins[monthIndex]++; });
         const winRateData = monthlyTotals.map((total, index) => total > 0 ? (monthlyWins[index] / total) * 100 : 0);
 
         monthlyActivityChartInstance = new Chart(monthlyActivityCtx, {
@@ -501,6 +513,18 @@ export function renderCharts(allClosedPositionsForStats, strategies, getClosingD
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterBody: context => {
+                                const monthIndex = context[0].dataIndex;
+                                return [
+                                    `${monthlyWins[monthIndex]} / ${monthlyTotals[monthIndex]} — Trades gagnants / total des trades clôturés`
+                                ];
+                            }
+                        }
+                    }
+                },
                 scales: {
                     yTrades: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: 'Nombre de Trades' }, grid: { color: 'rgba(0,0,0,0.05)' } },
                     yWinRate: { type: 'linear', position: 'right', min: 0, max: 100, title: { display: true, text: 'Taux de Gain (%)' }, grid: { drawOnChartArea: false } },
@@ -514,35 +538,62 @@ export function renderCharts(allClosedPositionsForStats, strategies, getClosingD
     const longShortCtx = document.getElementById('longShortPnlChart');
     if (longShortCtx) {
         const typeStats = { long: { totalPnl: 0, wins: 0, count: 0 }, short: { totalPnl: 0, wins: 0, count: 0 } };
-        allClosedPositionsForStats.forEach(pos => { const pnl = calculatePositionPnL(pos); if (pos.type === 'long' || pos.type === 'short') { typeStats[pos.type].count++; typeStats[pos.type].totalPnl += pnl; if (pnl >= 0) typeStats[pos.type].wins++; } });
-        const longGains = Math.max(0, typeStats.long.totalPnl);
-        const shortGains = Math.max(0, typeStats.short.totalPnl);
+        allClosedPositionsForStats.forEach(pos => { const pnl = calculatePositionPnL(pos); if (pos.type === 'long' || pos.type === 'short') { typeStats[pos.type].count++; typeStats[pos.type].totalPnl += pnl; if (pnl > 0) typeStats[pos.type].wins++; } });
+        const longShortResults = [typeStats.long.totalPnl, typeStats.short.totalPnl];
 
         longShortPnlChartInstance = new Chart(longShortCtx, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
-                labels: ['Profits générés par "Long"', 'Profits générés par "Short"'],
+                labels: ['Long', 'Short'],
                 datasets: [{
-                    data: [longGains, shortGains],
-                    backgroundColor: [FLASH_GREEN.main, FLASH_RED.main],
-                    hoverBackgroundColor: [FLASH_GREEN.light, FLASH_RED.light],
-                    borderColor: [FLASH_GREEN.glow, FLASH_RED.glow],
-                    borderWidth: 3,
-                    hoverBorderWidth: 4,
-                    hoverOffset: 8
+                    label: 'Résultat net',
+                    data: longShortResults,
+                    backgroundColor: longShortResults.map(result => result >= 0 ? FLASH_GREEN.main : FLASH_RED.main),
+                    hoverBackgroundColor: longShortResults.map(result => result >= 0 ? FLASH_GREEN.light : FLASH_RED.light),
+                    borderColor: longShortResults.map(result => result >= 0 ? FLASH_GREEN.glow : FLASH_RED.glow),
+                    borderWidth: 2
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '60%',
+                indexAxis: 'y',
                 plugins: {
                     legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Résultat net par position (Long / Short)'
+                    },
                     tooltip: {
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         padding: 12,
                         titleFont: { size: 13, weight: 'bold' },
-                        bodyFont: { size: 12 }
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                            label: context => {
+                                const result = context.parsed.x;
+                                return `Résultat net : ${result >= 0 ? '+' : ''}${result.toFixed(2)}`;
+                            },
+                            afterBody: context => {
+                                const stats = typeStats[context[0].dataIndex === 0 ? 'long' : 'short'];
+                                return [
+                                    `${stats.wins} / ${stats.count} — Trades gagnants / total des trades clôturés`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Résultat net'
+                        },
+                        grid: {
+                            color: context => context.tick.value === 0 ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.08)',
+                            lineWidth: context => context.tick.value === 0 ? 2 : 1
+                        }
                     }
                 }
             }

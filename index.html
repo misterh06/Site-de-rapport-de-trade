@@ -19,88 +19,67 @@
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Barre de navigation latérale -->
-            <nav class="col-md-2 d-none d-md-block sidebar" id="main-sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="brand-container text-center mb-4">
-                        <h4 class="mb-0 fw-bold text-white d-flex align-items-center justify-content-center">
-                            <i class="bi bi-graph-up-arrow text-info me-2 fs-3"></i>
-                            <span>Trading Journal</span>
-                        </h4>
-                        <small class="text-white-50" style="font-size: 0.7rem;">PORTFOLIO & ANALYTICS</small>
+            <nav class="col-12 navbar navbar-expand-xl top-navigation d-none" id="main-sidebar" aria-label="Navigation principale">
+                <div class="top-navigation-header">
+                    <div class="brand-container">
+                        <span class="brand-icon"><i class="bi bi-graph-up-arrow"></i></span>
+                        <span>
+                            <strong>Trading Journal</strong>
+                            <small>PORTFOLIO & ANALYTICS</small>
+                        </span>
                     </div>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#main-navigation" aria-controls="main-navigation" aria-expanded="false"
+                        aria-label="Afficher ou masquer le menu">
+                        <i class="bi bi-list"></i>
+                    </button>
+                </div>
 
-                    <ul class="nav flex-column">
-                        <!-- CATEGORY 1: TRADING ACTIF & OPTIONS -->
-                        <li class="sidebar-category-title">
-                            <i class="bi bi-activity text-info"></i>Trading Actif
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="dashboard">
-                                <i class="bi bi-speedometer2 me-2"></i>Tableau de Bord
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-warning fw-bold" href="options.html">
-                                <i class="bi bi-diagram-3-fill me-2"></i>Options Trading
-                                <span class="badge bg-warning text-dark nav-badge">HOT</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="open-positions">
-                                <i class="bi bi-card-checklist me-2"></i>Positions Actions
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="trade-history">
-                                <i class="bi bi-clock-history me-2"></i>Historique Trades
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="reports-analytics">
-                                <i class="bi bi-bar-chart-line me-2"></i>Rapports & Stats
-                            </a>
-                        </li>
-
-                        <!-- CATEGORY 2: INVESTISSEMENT LONG TERME -->
-                        <li class="sidebar-category-title">
-                            <i class="bi bi-bank text-warning"></i>Portefeuilles
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="pea.html">
-                                <i class="bi bi-pie-chart-fill me-2 text-warning"></i>Mon PEA (Long Terme)
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="enfants.html">
-                                <i class="bi bi-stars me-2 text-info"></i>Compte Enfants
-                            </a>
-                        </li>
-
-                        <!-- CATEGORY 3: COMPTE & SOLDE -->
-                        <li class="sidebar-category-title">
-                            <i class="bi bi-wallet2 text-success"></i>Gestion
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="account-management">
-                                <i class="bi bi-gear-fill me-2"></i>Gestion & Balances
-                            </a>
-                        </li>
-                    </ul>
-                    <hr class="my-3 border-secondary">
-
-                    <div class="text-center px-3">
-                        <p id="user-display" class="text-light small"></p>
-                        <button class="btn btn-outline-light btn-sm mb-2" id="logout-btn">Déconnexion</button>
-                        <button class="btn btn-outline-light btn-sm" id="theme-toggle-btn"><i
-                                class="bi bi-sun-fill"></i></button>
+                <div class="collapse navbar-collapse" id="main-navigation">
+                    <div class="top-navigation-groups">
+                        <div class="dropdown nav-cluster">
+                            <button class="btn dropdown-toggle nav-category-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-activity"></i>Trading
+                            </button>
+                            <div class="dropdown-menu nav-cluster-menu">
+                                <a class="dropdown-item nav-link" href="#" data-section="dashboard"><i class="bi bi-speedometer2"></i>Tableau de bord</a>
+                                <a class="dropdown-item nav-link" href="options.html"><i class="bi bi-diagram-3"></i>Options</a>
+                                <a class="dropdown-item nav-link" href="#" data-section="open-positions"><i class="bi bi-card-checklist"></i>Positions actions</a>
+                                <a class="dropdown-item nav-link" href="#" data-section="trade-history"><i class="bi bi-clock-history"></i>Historique des trades</a>
+                                <a class="dropdown-item nav-link" href="#" data-section="reports-analytics"><i class="bi bi-bar-chart-line"></i>Rapports & statistiques</a>
+                            </div>
+                        </div>
+                        <div class="dropdown nav-cluster">
+                            <button class="btn dropdown-toggle nav-category-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bank"></i>Portefeuilles
+                            </button>
+                            <div class="dropdown-menu nav-cluster-menu">
+                                <a class="dropdown-item nav-link" href="pea.html"><i class="bi bi-pie-chart"></i>PEA</a>
+                                <a class="dropdown-item nav-link" href="enfants.html"><i class="bi bi-stars"></i>Compte enfants</a>
+                            </div>
+                        </div>
+                        <div class="dropdown nav-cluster">
+                            <button class="btn dropdown-toggle nav-category-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-wallet2"></i>Gestion
+                            </button>
+                            <div class="dropdown-menu nav-cluster-menu">
+                                <a class="dropdown-item nav-link" href="#" data-section="account-management"><i class="bi bi-gear"></i>Comptes & soldes</a>
+                            </div>
+                        </div>
                     </div>
-
+                    <div class="top-navigation-actions">
+                        <span id="user-display" class="top-navigation-user"></span>
+                        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle-btn" type="button"
+                            aria-label="Changer le thème"><i class="bi bi-sun-fill"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary" id="logout-btn" type="button">
+                            <i class="bi bi-box-arrow-right me-1"></i>Déconnexion
+                        </button>
+                    </div>
                 </div>
             </nav>
 
             <!-- Contenu principal -->
-            <main class="col-md-10 ms-sm-auto col-lg-10 px-md-4" id="main-content-area">
+            <main class="col-12 px-3 px-lg-4" id="main-content-area">
                 <div
                     class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2" id="section-title">Chargement...</h1>
@@ -261,8 +240,10 @@
                                 </tr>
                             </thead>
                             <tbody id="open-positions-body"></tbody>
+                            <tfoot id="open-positions-totals"></tfoot>
                         </table>
                     </div>
+                    <div id="open-positions-account-summary" class="mt-3"></div>
                 </section>
 
                 <!-- Section Historique -->
@@ -940,6 +921,11 @@
                                         <label for="transactionPrice" class="form-label small mb-1">Prix</label>
                                         <input type="number" class="form-control form-control-sm" id="transactionPrice"
                                             step="any" placeholder="Ex: 430.50" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="transactionFees" class="form-label small mb-1">Frais</label>
+                                        <input type="number" class="form-control form-control-sm" id="transactionFees"
+                                            step="any" min="0" value="0.36" required>
                                     </div>
                                 </div>
                             </div>

@@ -33,7 +33,13 @@ function formatCurrency(value) {
 }
 
 function formatPercent(value) {
+    if (!Number.isFinite(value)) return '—';
     return `${Number(value || 0).toFixed(1)} %`;
+}
+
+function formatSignedCurrency(value) {
+    const amount = Number(value || 0);
+    return `${amount > 0 ? '+' : ''}${formatCurrency(amount)}`;
 }
 
 function formatDate(dateValue) {
@@ -224,7 +230,8 @@ function subscribeToOperations() {
 
 function calculateSummary(investorName) {
     let cash = 0;
-    let invested = 0;
+    let deposits = 0;
+    let withdrawals = 0;
     const holdings = {};
 
     const investorOps = state.operations.filter((op) => op.investor === investorName);
@@ -233,12 +240,13 @@ function calculateSummary(investorName) {
         const quantity = Number(op.quantity || 0);
         const price = Number(op.price || 0);
         const amount = Number(op.amount || 0);
+        const tradingCosts = Number(op.fees || 0) + Number(op.ttf || 0);
 
         if (op.type === 'deposit') {
             cash += amount;
-            invested += amount;
+            deposits += amount;
         } else if (op.type === 'buy') {
-            cash -= amount;
+            cash -= amount + tradingCosts;
             if (!holdings[op.asset]) {
                 holdings[op.asset] = { qty: 0, avgCost: 0 };
             }
@@ -248,12 +256,13 @@ function calculateSummary(investorName) {
             line.avgCost = newQty > 0 ? (oldValue + amount) / newQty : 0;
             line.qty = newQty;
         } else if (op.type === 'sell') {
-            cash += amount;
+            cash += amount - tradingCosts;
             if (holdings[op.asset]) {
                 holdings[op.asset].qty = Math.max(0, holdings[op.asset].qty - quantity);
             }
         } else if (op.type === 'withdrawal') {
             cash -= amount;
+            withdrawals += amount;
         }
     });
 
@@ -264,8 +273,10 @@ function calculateSummary(investorName) {
     });
 
     const totalValue = cash + holdingsValue;
-    const performance = invested > 0 ? ((totalValue - invested) / invested) * 100 : 0;
-    return { cash, invested, holdings, holdingsValue, totalValue, performance };
+    const netContributions = deposits - withdrawals;
+    const netResult = totalValue + withdrawals - deposits;
+    const performance = netContributions > 0 ? (netResult / netContributions) * 100 : null;
+    return { cash, deposits, withdrawals, netContributions, netResult, holdings, holdingsValue, totalValue, performance };
 }
 
 function getLatestPriceForAsset(assetName, investorName) {
@@ -349,7 +360,7 @@ function renderKids() {
 
     grid.innerHTML = kids.map((kid) => {
         const summary = calculateSummary(kid.name);
-        const progress = Math.min(100, Math.round((summary.totalValue / Math.max(1000, summary.invested || 1000)) * 100));
+        const progress = Math.min(100, Math.round((summary.totalValue / Math.max(1000, summary.deposits || 1000)) * 100));
         return `
             <div class="col-md-6">
                 <div class="kid-card">
@@ -368,7 +379,7 @@ function renderKids() {
                         <div class="progress-bar">
                             <div style="width:${progress}%; background:linear-gradient(90deg, ${kid.color} 0%, #7b61ff 100%);"></div>
                         </div>
-                        <small class="text-muted d-block mt-2">Liquidités ${formatCurrency(summary.cash)} • Objectif de progression ${formatPercent(summary.performance)}</small>
+                        <small class="text-muted d-block mt-2">Résultat net ${formatSignedCurrency(summary.netResult)} • Liquidités ${formatCurrency(summary.cash)} • Progression ${formatPercent(summary.performance)}</small>
                     </div>
                 </div>
             </div>
@@ -556,10 +567,11 @@ function renderOverall() {
     if (!overallCapital || !overallGain) return;
     const summaries = kids.map((kid) => calculateSummary(kid.name));
     const totalValue = summaries.reduce((sum, item) => sum + item.totalValue, 0);
-    const invested = summaries.reduce((sum, item) => sum + item.invested, 0);
-    const performance = invested > 0 ? ((totalValue - invested) / invested) * 100 : 0;
+    const netContributions = summaries.reduce((sum, item) => sum + item.netContributions, 0);
+    const netResult = summaries.reduce((sum, item) => sum + item.netResult, 0);
+    const performance = netContributions > 0 ? (netResult / netContributions) * 100 : null;
     overallCapital.textContent = formatCurrency(totalValue);
-    overallGain.textContent = `Progression globale : ${formatPercent(performance)}`;
+    overallGain.textContent = `Résultat net global : ${formatSignedCurrency(netResult)} • Progression : ${formatPercent(performance)}`;
 }
 
 function renderAll() {

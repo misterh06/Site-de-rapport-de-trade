@@ -74,33 +74,6 @@ body.light-mode .text-warning-emphasis {
     color: #b4942b !important;
 }
 
-/* Sidebar Customisation */
-#pea-sidebar {
-    background: var(--glass-bg);
-    border-right: 1px solid var(--glass-border);
-    backdrop-filter: blur(10px);
-    z-index: 1000;
-}
-
-.nav-link {
-    color: var(--text-muted);
-    font-weight: 500;
-    padding: 0.8rem 1rem;
-    transition: all 0.3s ease;
-    border-radius: 8px;
-    margin-bottom: 5px;
-}
-
-.nav-link:hover {
-    color: var(--gold-primary);
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.nav-link.active {
-    color: var(--gold-primary);
-    background: rgba(212, 175, 55, 0.1);
-}
-
 /* Glass Panels */
 .glass-panel {
     background: var(--glass-bg);
@@ -137,6 +110,488 @@ body.light-mode .text-warning-emphasis {
 
 .table-condensed tbody tr {
     line-height: 1.2;
+}
+
+.dividend-summary-scroll {
+    max-height: 280px;
+    overflow: auto;
+}
+
+#dividend-summary-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg-dark-light);
+}
+
+.asset-performance-card .card-header {
+    padding: 1.1rem 1.25rem;
+}
+
+.asset-performance-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.asset-performance-heading-icon {
+    display: grid;
+    place-items: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    flex: 0 0 auto;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 0.9rem;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    font-size: 1.2rem;
+}
+
+.asset-performance-filter {
+    width: min(100%, 13rem);
+}
+
+.asset-performance-summary {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.25rem;
+    border-top: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(148, 163, 184, 0.05);
+}
+
+.asset-performance-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.asset-performance-summary-item > span:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.asset-performance-summary-item small {
+    color: var(--text-muted);
+    font-size: 0.71rem;
+    line-height: 1.2;
+}
+
+.asset-performance-summary-item strong {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.asset-performance-summary-main strong {
+    font-size: 1.15rem;
+}
+
+.asset-performance-summary-icon {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    border-radius: 0.7rem;
+    font-size: 1rem;
+}
+
+.summary-icon-pnl {
+    color: #047857;
+    background: rgba(16, 185, 129, 0.13);
+}
+
+.summary-icon-analyst {
+    color: #1d4ed8;
+    background: rgba(59, 130, 246, 0.13);
+}
+
+.summary-icon-technical {
+    color: #7c3aed;
+    background: rgba(139, 92, 246, 0.13);
+}
+
+.asset-performance-table {
+    width: 100%;
+}
+
+.asset-performance-table thead th {
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    background: var(--bg-dark-light);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.asset-performance-table thead th:first-child {
+    width: 25%;
+}
+
+.asset-performance-table thead th:nth-child(2) {
+    width: 20%;
+}
+
+.asset-performance-table thead th:nth-child(3) {
+    width: 20%;
+}
+
+.asset-performance-table thead th:nth-child(4) {
+    width: 20%;
+}
+
+.asset-performance-table thead th:last-child {
+    width: 15%;
+}
+
+.asset-performance-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+}
+
+.asset-performance-sort:hover,
+.asset-performance-sort:focus-visible {
+    color: var(--gold-primary);
+}
+
+.asset-performance-sort:focus-visible {
+    outline: 2px solid var(--gold-primary);
+    outline-offset: 3px;
+    border-radius: 3px;
+}
+
+.asset-performance-sort i {
+    font-size: 0.8rem;
+}
+
+.asset-performance-table tbody td {
+    padding-top: 0.95rem;
+    padding-bottom: 0.95rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.asset-performance-asset {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.asset-performance-symbol {
+    display: grid;
+    place-items: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    flex: 0 0 auto;
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    border-radius: 0.9rem;
+    color: var(--gold-primary);
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.05));
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.asset-performance-details {
+    min-width: 0;
+}
+
+.asset-performance-name-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.6rem;
+}
+
+.asset-rating-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.38rem;
+    min-height: 1.9rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.asset-rating-chip i {
+    font-size: 0.8rem;
+}
+
+.rating-strong-buy {
+    color: #047857;
+    border-color: rgba(5, 150, 105, 0.28);
+    background: rgba(16, 185, 129, 0.13);
+}
+
+.rating-buy {
+    color: #15803d;
+    border-color: rgba(34, 197, 94, 0.25);
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.rating-neutral {
+    color: #a16207;
+    border-color: rgba(234, 179, 8, 0.3);
+    background: rgba(234, 179, 8, 0.12);
+}
+
+.rating-sell {
+    color: #c2410c;
+    border-color: rgba(249, 115, 22, 0.28);
+    background: rgba(249, 115, 22, 0.12);
+}
+
+.rating-strong-sell {
+    color: #b91c1c;
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.13);
+}
+
+.rating-unknown,
+.rating-empty {
+    color: var(--text-muted);
+    border-color: var(--glass-border);
+    background: rgba(148, 163, 184, 0.08);
+}
+
+.asset-performance-metadata {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--text-muted);
+    font-size: 0.76rem;
+}
+
+.asset-position-metadata {
+    white-space: nowrap;
+}
+
+.asset-signal-cell {
+    min-width: 9rem;
+}
+
+.asset-signal-cell .asset-rating-chip {
+    max-width: 100%;
+}
+
+.asset-signal-outcome,
+.asset-target-current,
+.asset-target-gap,
+.asset-target-missing {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.asset-target-cell {
+    min-width: 9rem;
+}
+
+.asset-target-value {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    white-space: nowrap;
+}
+
+.asset-target-current,
+.asset-target-missing {
+    color: var(--text-muted);
+}
+
+.asset-target-cell .asset-performance-meter {
+    margin-top: 0.5rem;
+}
+
+.asset-performance-value {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.96rem;
+    white-space: nowrap;
+}
+
+.asset-performance-allocation {
+    white-space: nowrap;
+}
+
+.asset-performance-result {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.7rem;
+}
+
+.asset-performance-result strong {
+    font-size: 0.98rem;
+    white-space: nowrap;
+}
+
+.asset-performance-result span {
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.asset-performance-meter {
+    position: relative;
+    height: 0.35rem;
+    margin-top: 0.7rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.16);
+}
+
+.asset-performance-meter-center {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: var(--text-muted);
+    opacity: 0.65;
+}
+
+.asset-performance-meter-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 999px;
+}
+
+.asset-performance-meter-bar.is-positive {
+    background: linear-gradient(90deg, #34d399, #059669);
+}
+
+.asset-performance-meter-bar.is-negative {
+    background: linear-gradient(90deg, #dc2626, #fb7185);
+}
+
+.asset-performance-empty-row td {
+    text-align: center;
+}
+
+@media (max-width: 767.98px) {
+    .asset-performance-card .card-header {
+        align-items: flex-start !important;
+    }
+
+    .asset-performance-filter {
+        width: 100%;
+        margin-left: 3.65rem;
+    }
+
+    .asset-performance-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0.8rem 1rem;
+    }
+
+    .asset-performance-summary-main {
+        grid-column: 1 / -1;
+    }
+
+    .asset-performance-table,
+    .asset-performance-table tbody {
+        display: block;
+    }
+
+    .asset-performance-table thead {
+        display: none;
+    }
+
+    .asset-performance-table tbody {
+        padding: 0.75rem;
+    }
+
+    .asset-performance-table tbody tr:not(.asset-performance-empty-row) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0.85rem 1rem;
+        margin-bottom: 0.75rem;
+        padding: 0.95rem;
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        background: var(--glass-bg);
+    }
+
+    .asset-performance-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    #asset-performance-table tbody td {
+        display: block;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+    }
+
+    .asset-performance-table tbody td:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .asset-performance-table tbody td:not(:first-child)::before {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: var(--text-muted);
+        content: attr(data-label);
+        font-size: 0.68rem;
+        letter-spacing: 0.06em;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .asset-performance-table tbody td:nth-child(2),
+    .asset-performance-table tbody td:nth-child(3) {
+        text-align: left !important;
+    }
+
+    .asset-performance-table tbody td:nth-child(4),
+    .asset-performance-table tbody td:nth-child(5) {
+        text-align: left !important;
+    }
+
+    .asset-performance-result {
+        justify-content: flex-start;
+    }
+
+    .asset-performance-meter {
+        max-width: 14rem;
+    }
+
+    .asset-performance-empty-row {
+        display: block;
+        margin: 0;
+        padding: 0.75rem;
+        border: 0 !important;
+        background: transparent !important;
+    }
+
+    #asset-performance-table tbody .asset-performance-empty-row td {
+        padding: 1.5rem 0.75rem !important;
+        background: transparent !important;
+    }
 }
 
 /* KPI Cards */
@@ -332,34 +787,15 @@ body.light-mode #holdings-table.table.table-dark tbody tr:nth-child(even) td {
 }
 
 #holdings-table.table.table-dark.table-hover tbody tr:hover > *,
-#asset-performance-table.table.table-dark.table-hover tbody tr:hover > *,
 #history-table.table.table-dark.table-hover tbody tr:hover > *,
 .table-hover.table-dark tbody tr:hover > * {
     background-color: rgba(180, 132, 34, 0.45) !important;
     color: inherit !important;
 }
 
-body.dark-mode #asset-performance-table.table.table-dark tbody tr:nth-child(odd) td {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-body.dark-mode #asset-performance-table.table.table-dark tbody tr:nth-child(even) td {
-    background-color: rgba(255, 255, 255, 0.16) !important;
-}
-
-body.light-mode #asset-performance-table.table.table-dark tbody tr:nth-child(odd) td {
-    background-color: #ffffff !important;
-}
-
-body.light-mode #asset-performance-table.table.table-dark tbody tr:nth-child(even) td {
-    background-color: #f2f4f7 !important;
-}
-
 body.dark-mode #holdings-table.table.table-dark.table-hover tbody tr:hover > *,
-body.dark-mode #asset-performance-table.table.table-dark.table-hover tbody tr:hover > *,
 body.dark-mode #history-table.table.table-dark.table-hover tbody tr:hover > *,
 body.light-mode #holdings-table.table.table-dark.table-hover tbody tr:hover > *,
-body.light-mode #asset-performance-table.table.table-dark.table-hover tbody tr:hover > *,
 body.light-mode #history-table.table.table-dark.table-hover tbody tr:hover > * {
     background-color: rgba(180, 132, 34, 0.45) !important;
     color: inherit !important;

@@ -302,14 +302,14 @@ async function refreshData() {
         const optionsRef = collection(db, 'users', currentUser.uid, 'optionsPositions');
         const snapshot = await getDocs(optionsRef);
 
-        const currentAccountId = getSelectedTitleAccountId();
+        const currentAccountId = normalizeStoredAccountId(getSelectedTitleAccountId());
 
         allOptionsPositions = snapshot.docs.map(docSnap => ({
             id: docSnap.id,
             ...docSnap.data()
         })).filter(opt => {
-            const optAcc = String(opt.accountId || DEFAULT_TITLE_ACCOUNT_ID).toUpperCase();
-            return optAcc === currentAccountId || (currentAccountId === DEFAULT_TITLE_ACCOUNT_ID.toUpperCase() && optAcc === 'COMPTE-ACTUEL');
+            const optAcc = normalizeStoredAccountId(opt.accountId);
+            return optAcc === currentAccountId;
         });
 
         // Trier par date d'entrée descendant
@@ -337,12 +337,12 @@ async function fetchOpenStockPositions() {
         const q = query(positionsRef, where('status', '==', 'open'));
         const snapshot = await getDocs(q);
 
-        const currentAccountId = getSelectedTitleAccountId();
+        const currentAccountId = normalizeStoredAccountId(getSelectedTitleAccountId());
 
         snapshot.docs.forEach(docSnap => {
             const data = docSnap.data();
-            const posAcc = String(data.accountId || DEFAULT_TITLE_ACCOUNT_ID).toUpperCase();
-            if (posAcc === currentAccountId || (currentAccountId === DEFAULT_TITLE_ACCOUNT_ID.toUpperCase() && posAcc === 'COMPTE-ACTUEL')) {
+            const posAcc = normalizeStoredAccountId(data.accountId);
+            if (posAcc === currentAccountId) {
                 const ticker = String(data.asset || '').trim().toUpperCase();
                 if (!ticker) return;
 
@@ -391,6 +391,42 @@ function calculateOptionPnL(option) {
     return grossPnL - entryComm - exitComm;
 }
 
+function getOptionMultiplier(value) {
+    if (value === undefined || value === null) return 100;
+    if (typeof value !== 'number' && typeof value !== 'string') return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+
+    const multiplier = Number(value);
+    return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null;
+}
+
+function getOpenShortCallCommitments(ticker, accountId, excludedOptionId = null) {
+    const normalizedTicker = String(ticker || '').trim().toUpperCase();
+    const normalizedAccountId = normalizeStoredAccountId(accountId);
+
+    return allOptionsPositions.reduce((commitments, option) => {
+        if (
+            option.status !== 'open' ||
+            option.side !== 'sell' ||
+            option.optionType !== 'call' ||
+            option.id === excludedOptionId ||
+            String(option.ticker || '').trim().toUpperCase() !== normalizedTicker ||
+            normalizeStoredAccountId(option.accountId) !== normalizedAccountId
+        ) {
+            return commitments;
+        }
+
+        const multiplier = getOptionMultiplier(option.multiplier);
+        if (multiplier === null) {
+            commitments.hasInvalidMultiplier = true;
+            return commitments;
+        }
+
+        commitments.requiredShares += (parseFloat(option.contracts) || 1) * multiplier;
+        return commitments;
+    }, { requiredShares: 0, hasInvalidMultiplier: false });
+}
+
 function calculateDTE(expirationDateStr) {
     if (!expirationDateStr) return 0;
     const exp = new Date(expirationDateStr);
@@ -431,15 +467,20 @@ function renderKPIs() {
     });
 
     // Collateral des Ventes de Put ouvertes
+    let hasInvalidPutMultiplier = false;
     openOptions.forEach(opt => {
         const dte = calculateDTE(opt.expirationDate);
         if (dte >= 0 && dte <= 7) expiringSoonCount++;
 
         if (opt.side === 'sell' && opt.optionType === 'put') {
             const contracts = parseFloat(opt.contracts) || 1;
-            const multiplier = parseFloat(opt.multiplier) || 100;
+            const multiplier = getOptionMultiplier(opt.multiplier);
             const strike = parseFloat(opt.strike) || 0;
-            collateral += strike * contracts * multiplier;
+            if (multiplier === null) {
+                hasInvalidPutMultiplier = true;
+            } else {
+                collateral += strike * contracts * multiplier;
+            }
         }
     });
 
@@ -456,7 +497,7 @@ function renderKPIs() {
 
     const elCollateral = document.getElementById('stat-collateral');
     if (elCollateral) {
-        elCollateral.textContent = `$${collateral.toFixed(2)}`;
+        elCollateral.textContent = hasInvalidPutMultiplier ? 'Multiplicateur invalide' : `$${collateral.toFixed(2)}`;
     }
 
     const elExpSoon = document.getElementById('stat-expiring-soon');
@@ -504,25 +545,35 @@ function renderOpenOptionsTable() {
         let coverBadge = '';
         const ticker = String(opt.ticker || '').toUpperCase();
         const ownedShares = openStockPositionsByTicker[ticker] || 0;
-        const requiredShares = (parseFloat(opt.contracts) || 1) * 100;
+        const multiplier = getOptionMultiplier(opt.multiplier);
+        const requiredShares = multiplier === null ? null : (parseFloat(opt.contracts) || 1) * multiplier;
 
         if (opt.side === 'sell' && opt.optionType === 'call') {
-            if (ownedShares >= requiredShares) {
-                coverBadge = `<span class="badge badge-covered" title="${ownedShares} actions détenues"><i class="bi bi-shield-check me-1"></i>Covered (${ownedShares}/${requiredShares})</span>`;
+            const commitments = getOpenShortCallCommitments(ticker, opt.accountId);
+            if (commitments.hasInvalidMultiplier) {
+                coverBadge = '<span class="badge badge-uncovered" title="Un multiplicateur des calls ouverts est invalide"><i class="bi bi-exclamation-triangle me-1"></i>Couverture à vérifier</span>';
+            } else if (commitments.requiredShares > ownedShares) {
+                const deficit = commitments.requiredShares - ownedShares;
+                coverBadge = `<span class="badge badge-uncovered" title="Engagements des calls ouverts : ${commitments.requiredShares} actions requises"><i class="bi bi-exclamation-triangle me-1"></i>Couverture insuffisante (${ownedShares}/${commitments.requiredShares}, déficit ${deficit})</span>`;
+            } else if (requiredShares === null) {
+                coverBadge = '<span class="badge badge-uncovered" title="Multiplicateur invalide"><i class="bi bi-exclamation-triangle me-1"></i>Multiplicateur invalide</span>';
             } else {
-                coverBadge = `<span class="badge badge-uncovered" title="Seulement ${ownedShares} actions détenues"><i class="bi bi-exclamation-triangle me-1"></i>Naked Call (${ownedShares}/${requiredShares})</span>`;
+                coverBadge = `<span class="badge badge-covered" title="Engagements des calls ouverts : ${commitments.requiredShares} actions requises"><i class="bi bi-shield-check me-1"></i>Couverture globale (${ownedShares}/${commitments.requiredShares})</span>`;
             }
         } else if (opt.side === 'sell' && opt.optionType === 'put') {
-            const collateralVal = (parseFloat(opt.strike) || 0) * requiredShares;
-            coverBadge = `<span class="badge badge-cash-secured" title="Collateral $${collateralVal.toFixed(0)}"><i class="bi bi-shield-lock me-1"></i>Cash Secured</span>`;
+            if (requiredShares === null) {
+                coverBadge = '<span class="badge badge-uncovered" title="Multiplicateur invalide"><i class="bi bi-exclamation-triangle me-1"></i>Multiplicateur invalide</span>';
+            } else {
+                const collateralVal = (parseFloat(opt.strike) || 0) * requiredShares;
+                coverBadge = `<span class="badge badge-cash-secured" title="Collateral $${collateralVal.toFixed(0)}"><i class="bi bi-shield-lock me-1"></i>Cash Secured</span>`;
+            }
         } else {
             coverBadge = `<span class="badge bg-secondary bg-opacity-20 text-white-50">Débit</span>`;
         }
 
         const contracts = parseFloat(opt.contracts) || 1;
-        const multiplier = parseFloat(opt.multiplier) || 100;
         const premium = parseFloat(opt.premiumPrice) || 0;
-        const totalPrem = contracts * multiplier * premium;
+        const totalPrem = multiplier === null ? null : contracts * multiplier * premium;
 
         return `
             <tr>
@@ -535,7 +586,7 @@ function renderOpenOptionsTable() {
                 </td>
                 <td class="fw-bold">${opt.contracts}</td>
                 <td>$${premium.toFixed(2)}</td>
-                <td class="fw-bold text-warning">$${totalPrem.toFixed(2)}</td>
+                <td class="fw-bold text-warning">${totalPrem === null ? 'Multiplicateur invalide' : `$${totalPrem.toFixed(2)}`}</td>
                 <td>${coverBadge}</td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-primary me-1 btn-edit-option" data-id="${opt.id}" title="Modifier">
@@ -667,7 +718,7 @@ function openEditModal(id) {
     document.getElementById('opt-contracts').value = option.contracts || 1;
     document.getElementById('opt-premium').value = option.premiumPrice || 0;
     document.getElementById('opt-commission').value = option.entryCommission !== undefined ? option.entryCommission : 1.00;
-    document.getElementById('opt-multiplier').value = option.multiplier || 100;
+    document.getElementById('opt-multiplier').value = option.multiplier === undefined || option.multiplier === null ? 100 : option.multiplier;
     document.getElementById('opt-notes').value = option.notes || '';
 
     updateCalculationsNewOption();
@@ -769,16 +820,18 @@ function updateCalculationsNewOption() {
     const contracts = parseFloat(document.getElementById('opt-contracts').value) || 1;
     const premium = parseFloat(document.getElementById('opt-premium').value) || 0;
     const commission = parseFloat(document.getElementById('opt-commission').value) || 0;
-    const multiplier = parseFloat(document.getElementById('opt-multiplier').value) || 100;
+    const multiplierInput = document.getElementById('opt-multiplier');
+    const multiplier = getOptionMultiplier(multiplierInput.value);
+    multiplierInput.setCustomValidity(multiplier === null ? 'Saisissez un multiplicateur numérique supérieur à zéro.' : '');
 
-    const totalPremium = contracts * multiplier * premium;
-    const netPremium = optSide === 'sell' ? totalPremium - commission : totalPremium + commission;
-    const collateral = strike * contracts * multiplier;
+    const totalPremium = multiplier === null ? null : contracts * multiplier * premium;
+    const netPremium = totalPremium === null ? null : (optSide === 'sell' ? totalPremium - commission : totalPremium + commission);
+    const collateral = multiplier === null ? null : strike * contracts * multiplier;
 
-    document.getElementById('opt-calc-total-premium').textContent = `$${totalPremium.toFixed(2)}`;
+    document.getElementById('opt-calc-total-premium').textContent = totalPremium === null ? 'Multiplicateur invalide' : `$${totalPremium.toFixed(2)}`;
     const netElem = document.getElementById('opt-calc-net-premium');
-    if (netElem) netElem.textContent = `$${netPremium.toFixed(2)}`;
-    document.getElementById('opt-calc-collateral').textContent = `$${collateral.toFixed(2)}`;
+    if (netElem) netElem.textContent = netPremium === null ? 'Multiplicateur invalide' : `$${netPremium.toFixed(2)}`;
+    document.getElementById('opt-calc-collateral').textContent = collateral === null ? 'Multiplicateur invalide' : `$${collateral.toFixed(2)}`;
 
     // Mise à jour du texte d'explication pédagogique
     const explanationSpan = document.getElementById('opt-explanation-text');
@@ -802,21 +855,31 @@ function updateCalculationsNewOption() {
         collateralRow.style.display = 'none';
     }
 
-    // Détection Covered Call par rapport aux 100 actions détenues dans le compte
+    // Détection Covered Call par rapport aux actions détenues dans le compte
     const coveredStatusDiv = document.getElementById('opt-covered-call-status');
     const coveredMsgSpan = document.getElementById('opt-covered-call-msg');
 
     if (optSide === 'sell' && optType === 'call' && ticker) {
         const ownedShares = openStockPositionsByTicker[ticker] || 0;
-        const requiredShares = contracts * 100;
+        const requiredShares = multiplier === null ? null : contracts * multiplier;
+        const editingId = document.getElementById('opt-editing-id').value;
+        const otherCommitments = getOpenShortCallCommitments(ticker, getSelectedTitleAccountId(), editingId || null);
+        const availableShares = Math.max(0, ownedShares - otherCommitments.requiredShares);
 
         coveredStatusDiv.classList.remove('d-none');
-        if (ownedShares >= requiredShares) {
+        if (otherCommitments.hasInvalidMultiplier) {
+            coveredStatusDiv.className = 'alert alert-warning mb-3';
+            coveredMsgSpan.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i><strong>Couverture à vérifier :</strong> un autre call ouvert a un multiplicateur invalide.';
+        } else if (requiredShares === null) {
+            coveredStatusDiv.className = 'alert alert-warning mb-3';
+            coveredMsgSpan.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i><strong>Multiplicateur invalide :</strong> saisissez un nombre supérieur à zéro pour vérifier la couverture.';
+        } else if (availableShares >= requiredShares) {
             coveredStatusDiv.className = 'alert alert-success mb-3';
-            coveredMsgSpan.innerHTML = `<i class="bi bi-shield-check me-2"></i><strong>Covered Call Sécurisé :</strong> Vous possédez <strong>${ownedShares}</strong> actions ${ticker} dans ce compte (besoin de ${requiredShares} actions).`;
+            coveredMsgSpan.innerHTML = `<i class="bi bi-shield-check me-2"></i><strong>Covered Call :</strong> ${ownedShares} actions détenues, ${otherCommitments.requiredShares} engagées dans les autres calls, ${availableShares} disponibles ; ${requiredShares} requises pour cette option.`;
         } else {
             coveredStatusDiv.className = 'alert alert-warning mb-3';
-            coveredMsgSpan.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i><strong>Attention - Call Nu (Naked Call) :</strong> Vous possédez ${ownedShares} actions ${ticker} dans ce compte (${requiredShares} requises pour être couvert).`;
+            const deficit = requiredShares - availableShares;
+            coveredMsgSpan.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i><strong>Couverture insuffisante :</strong> ${ownedShares} actions détenues, ${otherCommitments.requiredShares} engagées dans les autres calls, ${availableShares} disponibles ; déficit de ${deficit} actions.`;
         }
     } else {
         coveredStatusDiv.classList.add('d-none');
@@ -837,8 +900,13 @@ async function saveNewOption() {
     const contracts = parseInt(document.getElementById('opt-contracts').value) || 1;
     const premiumPrice = parseFloat(document.getElementById('opt-premium').value);
     const entryCommission = parseFloat(document.getElementById('opt-commission').value) || 0;
-    const multiplier = parseInt(document.getElementById('opt-multiplier').value) || 100;
+    const multiplier = getOptionMultiplier(document.getElementById('opt-multiplier').value);
     const notes = (document.getElementById('opt-notes').value || '').trim();
+
+    if (multiplier === null) {
+        showToast('Le multiplicateur doit être un nombre supérieur à zéro.', 'error');
+        return;
+    }
 
     if (!ticker || isNaN(strike) || !expirationDate || !entryDate || isNaN(premiumPrice)) {
         showToast('Veuillez remplir tous les champs obligatoires correctement.', 'error');

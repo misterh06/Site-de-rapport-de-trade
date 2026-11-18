@@ -8,6 +8,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         pea: resolve(__dirname, 'pea.html'),
+        options: resolve(__dirname, 'options.html'),
+        enfants: resolve(__dirname, 'enfants.html'),
       },
     },
   },

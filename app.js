@@ -343,6 +343,7 @@ const positionTypeInput = document.getElementById('positionType');
 const transactionDateInput = document.getElementById('transactionDate');
 const transactionQuantityInput = document.getElementById('transactionQuantity');
 const transactionPriceInput = document.getElementById('transactionPrice');
+const transactionFeesInput = document.getElementById('transactionFees');
 const positionNotesInput = document.getElementById('positionNotes');
 const savePositionBtn = document.getElementById('save-position-btn');
 const assetGroup = document.getElementById('asset-group');
@@ -890,12 +891,21 @@ function showSection(sectionId) {
 
 function renderOpenPositions() {
     openPositionsBody.innerHTML = '';
+    const totalsByCurrency = {};
     if (openPositions.length === 0) {
         openPositionsBody.innerHTML = '<tr><td colspan="9" class="text-center">Aucune position ouverte.</td></tr>';
-        return;
     }
     openPositions.forEach(pos => {
         const metrics = calculatePositionMetrics(pos);
+        const currency = (pos.currency || 'USD').trim().toUpperCase();
+        const currencyTotals = totalsByCurrency[currency] || (totalsByCurrency[currency] = {
+            engaged: 0,
+            unrealizedPnL: 0,
+            realizedPnL: 0,
+            pricedPositions: 0
+        });
+        const engagedValue = metrics.currentQuantity * metrics.averageEntryPrice;
+        currencyTotals.engaged += engagedValue;
 
         // --- Récupération du cours réel en direct (depuis Google Sheet) ---
         const tickerUpper = (pos.asset || '').trim().toUpperCase();
@@ -908,7 +918,7 @@ function renderOpenPositions() {
         if (livePrice !== null && metrics.currentQuantity > 0) {
             livePriceHtml = `
                 <span class="font-monospace fw-bold text-success" title="Cours réel en direct (Google Sheet)">
-                    ${livePrice.toFixed(2)} ${pos.currency}
+                    ${livePrice.toFixed(2)} ${currency}
                 </span>
                 <span class="badge bg-success bg-opacity-10 text-success ms-1" style="font-size: 0.65rem;">LIVE</span>
             `;
@@ -920,6 +930,8 @@ function renderOpenPositions() {
             } else {
                 unrealizedPnL = (metrics.averageEntryPrice - livePrice) * metrics.currentQuantity;
             }
+            currencyTotals.unrealizedPnL += unrealizedPnL;
+            currencyTotals.pricedPositions++;
 
             const investedValue = metrics.currentQuantity * metrics.averageEntryPrice;
             const pnlPercent = investedValue > 0 ? (unrealizedPnL / investedValue) * 100 : 0;
@@ -950,13 +962,14 @@ function renderOpenPositions() {
             }
             // Soustraire les frais déjà réglés
             realizedPnL -= metrics.totalFees;
+            currencyTotals.realizedPnL += realizedPnL;
 
             const color = realizedPnL >= 0 ? '#198754' : '#dc3545';
             const sign = realizedPnL >= 0 ? '+' : '';
             const exitInfo = `${metrics.totalExitQuantity} action(s) déjà clôturée(s)`;
             realizedPnLHtml = `
                 <span class="fw-bold font-monospace" style="color: ${color};" title="${exitInfo}">
-                    ${sign}${realizedPnL.toFixed(2)} ${pos.currency}
+                    ${sign}${realizedPnL.toFixed(2)} ${currency}
                 </span>
                 <br><small class="text-muted" style="font-size:0.7em;">${metrics.totalExitQuantity} clôturée(s)</small>`;
         }
@@ -966,8 +979,8 @@ function renderOpenPositions() {
             <td class="fw-bold">${pos.asset}</td>
             <td>${pos.type === 'long' ? 'Achat' : 'Vente'}</td>
             <td>${metrics.currentQuantity}</td>
-            <td class="font-monospace">${metrics.averageEntryPrice.toFixed(4)} ${pos.currency}</td>
-            <td class="font-monospace">${(metrics.currentQuantity * metrics.averageEntryPrice).toFixed(2)} ${pos.currency}</td>
+            <td class="font-monospace">${metrics.averageEntryPrice.toFixed(4)} ${currency}</td>
+            <td class="font-monospace">${engagedValue.toFixed(2)} ${currency}</td>
             <td>${livePriceHtml}</td>
             <td>${unrealizedPnLHtml}</td>
             <td>${realizedPnLHtml}</td>
@@ -977,6 +990,83 @@ function renderOpenPositions() {
                 <button class="btn btn-sm btn-primary" onclick="handleEditPosition('${pos.id}')">Modifier</button>
             </td>`;
     });
+
+    const totalsFooter = document.getElementById('open-positions-totals');
+    const accountSummary = document.getElementById('open-positions-account-summary');
+    const accountBalances = calculateAccountBalances();
+    const eurBalance = accountBalances.EUR || 0;
+    const usdBalance = accountBalances.USD || 0;
+    const eurEngaged = totalsByCurrency.EUR?.engaged || 0;
+    const usdEngaged = totalsByCurrency.USD?.engaged || 0;
+    const usdShortfall = Math.max(usdEngaged - usdBalance, 0);
+    const eurAvailableBeforeConversion = Math.max(eurBalance - eurEngaged, 0);
+    const eurConverted = eurToUsdRate > 0
+        ? Math.min(usdShortfall / eurToUsdRate, eurAvailableBeforeConversion)
+        : 0;
+    const simulatedBalances = { ...accountBalances };
+    if (eurConverted > 0) {
+        simulatedBalances.EUR = eurBalance - eurConverted;
+        simulatedBalances.USD = usdBalance + eurConverted * eurToUsdRate;
+    }
+    const currencies = [...new Set([
+        ...Object.keys(totalsByCurrency),
+        ...Object.keys(simulatedBalances)
+    ])].sort();
+
+    if (totalsFooter) {
+        totalsFooter.innerHTML = currencies.map(currency => {
+            const totals = totalsByCurrency[currency] || {
+                engaged: 0,
+                unrealizedPnL: 0,
+                realizedPnL: 0,
+                pricedPositions: 0
+            };
+            const unrealizedText = totals.pricedPositions > 0
+                ? `<span title="Positions avec cours en direct : ${totals.pricedPositions}">${totals.unrealizedPnL >= 0 ? '+' : ''}${totals.unrealizedPnL.toFixed(2)} ${currency}</span>`
+                : '—';
+            const realizedText = `${totals.realizedPnL >= 0 ? '+' : ''}${totals.realizedPnL.toFixed(2)} ${currency}`;
+
+            return `
+                <tr class="table-primary fw-bold">
+                    <td colspan="2">Total ${currency}</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>${totals.engaged.toFixed(2)} ${currency}</td>
+                    <td>—</td>
+                    <td>${unrealizedText}</td>
+                    <td>${realizedText}</td>
+                    <td></td>
+                </tr>`;
+        }).join('');
+    }
+
+    if (accountSummary) {
+        accountSummary.innerHTML = `
+            <div class="card border-info">
+                <div class="card-body py-2">
+                    <strong class="d-block mb-2">Valeur engagée et solde disponible</strong>
+                    ${currencies.length ? currencies.map(currency => {
+                        const engaged = totalsByCurrency[currency]?.engaged || 0;
+                        const balance = simulatedBalances[currency] || 0;
+                        const available = balance - engaged;
+                        const availableClass = available >= 0 ? 'text-success' : 'text-danger';
+                        return `
+                            <div class="d-flex flex-wrap gap-3 justify-content-between border-top py-2">
+                                <strong>${currency}</strong>
+                                <span>Engagé : ${engaged.toFixed(2)} ${currency}</span>
+                                <span>Solde du compte : ${balance.toFixed(2)} ${currency}</span>
+                                <span class="fw-bold ${availableClass}">Disponible : ${available.toFixed(2)} ${currency}</span>
+                            </div>`;
+                    }).join('') : '<span class="text-muted">Aucun solde ou engagement à afficher.</span>'}
+                    <small class="text-muted">
+                        Le disponible correspond au solde du compte moins la valeur engagée des positions ouvertes.
+                        ${eurConverted > 0
+                            ? `Conversion EUR/USD simulée : ${eurConverted.toFixed(2)} EUR au taux de 1 EUR = ${eurToUsdRate.toFixed(4)} USD.`
+                            : ''}
+                    </small>
+                </div>
+            </div>`;
+    }
 }
 // --- LOGIQUE D'ÉDITION DE POSITION ---
 
@@ -1563,6 +1653,11 @@ window.deletePosition = async (positionId) => {
 };
 
 savePositionBtn.addEventListener('click', async () => {
+    const feeValue = transactionFeesInput.value.trim();
+    const fees = Number(feeValue);
+    const invalidFees = feeValue === '' || !Number.isFinite(fees) || fees < 0;
+    transactionFeesInput.setCustomValidity(invalidFees ? 'Les frais doivent être un nombre positif ou nul.' : '');
+
     if (!positionForm.checkValidity()) {
         positionForm.reportValidity();
         return;
@@ -1573,7 +1668,7 @@ savePositionBtn.addEventListener('click', async () => {
         date: new Date(transactionDateInput.value),
         quantity: parseFloat(transactionQuantityInput.value),
         price: parseFloat(transactionPriceInput.value),
-        fees: 0.36
+        fees
     };
 
     // Récupérer les confluences cochées
@@ -1916,10 +2011,7 @@ if (titleAccountForm) {
 
 refreshTitleAccountSelection();
 
-// NOUVELLE FONCTION : Met à jour les balances par devise
-function updateAccountBalances() {
-    if (!balancesDisplay) return;
-
+function calculateAccountBalances() {
     const balances = {};
 
     // 1. Appliquer les transactions de compte
@@ -1956,6 +2048,15 @@ function updateAccountBalances() {
             balances[currency] += pnl;
         }
     });
+
+    return balances;
+}
+
+// NOUVELLE FONCTION : Met à jour les balances par devise
+function updateAccountBalances() {
+    if (!balancesDisplay) return;
+
+    const balances = calculateAccountBalances();
 
     // 3. Afficher les balances
     balancesDisplay.innerHTML = ''; // On vide l'ancien contenu
@@ -2465,6 +2566,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 if (currentUser) {
                     showSection(section);
+                    const navigationMenu = document.getElementById('main-navigation');
+                    if (navigationMenu.classList.contains('show')) {
+                        bootstrap.Collapse.getOrCreateInstance(navigationMenu).hide();
+                    }
                 }
             }
             // Si pas de data-section, on laisse le comportement par défaut (lien vers une autre page)
@@ -2536,5 +2641,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-

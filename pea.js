@@ -42,6 +42,7 @@ let pnlChartSettings = {
 };
 
 const TWELVE_DATA_API_KEY = "ee6a290787f341849d49e5b7110b63c1";
+const PEA_TRADE_WEBHOOK_URL = "https://n8n.n8n-sbf-avocats.fr/webhook-test/agentIA";
 
 let portfolioChartFilters = {
     period: 'all'
@@ -89,6 +90,127 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const upBtn = document.getElementById('update-prices-btn');
     if (upBtn) upBtn.addEventListener('click', handleUpdatePricesMock);
+
+    const dictationText = document.getElementById('pea-dictation-text');
+    const dictationStatus = document.getElementById('pea-dictation-status');
+    const startDictationBtn = document.getElementById('pea-dictation-start-btn');
+    const stopDictationBtn = document.getElementById('pea-dictation-stop-btn');
+    const sendDictationBtn = document.getElementById('pea-dictation-send-btn');
+    const dictationModal = document.getElementById('pea-trade-dictation-modal');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let dictationRecognition = null;
+    let isDictating = false;
+
+    const updateDictationControls = () => {
+        if (startDictationBtn) startDictationBtn.disabled = isDictating || !SpeechRecognition;
+        if (stopDictationBtn) stopDictationBtn.disabled = !isDictating;
+        if (sendDictationBtn) {
+            sendDictationBtn.disabled = isDictating || !dictationText.value.trim();
+        }
+    };
+
+    if (dictationText && dictationStatus && startDictationBtn && stopDictationBtn && sendDictationBtn) {
+        dictationText.addEventListener('input', updateDictationControls);
+
+        if (!SpeechRecognition) {
+            startDictationBtn.disabled = true;
+            dictationStatus.textContent = "La reconnaissance vocale n'est pas disponible dans ce navigateur. Vous pouvez saisir votre message manuellement.";
+        } else {
+            dictationRecognition = new SpeechRecognition();
+            dictationRecognition.lang = 'fr-FR';
+            dictationRecognition.continuous = true;
+            dictationRecognition.interimResults = true;
+
+            dictationRecognition.onstart = () => {
+                isDictating = true;
+                dictationStatus.textContent = "Écoute en cours…";
+                updateDictationControls();
+            };
+
+            dictationRecognition.onresult = (event) => {
+                const finalParts = [];
+                const interimParts = [];
+                for (let index = 0; index < event.results.length; index++) {
+                    const transcript = event.results[index][0].transcript.trim();
+                    if (event.results[index].isFinal) finalParts.push(transcript);
+                    else interimParts.push(transcript);
+                }
+
+                const baseText = dictationText.dataset.baseText || '';
+                dictationText.value = [baseText, finalParts.join(' '), interimParts.join(' ')]
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim();
+                dictationStatus.textContent = interimParts.length
+                    ? "Écoute en cours… transcription provisoire affichée."
+                    : "Écoute en cours…";
+                updateDictationControls();
+            };
+
+            dictationRecognition.onerror = (event) => {
+                const errorMessages = {
+                    'not-allowed': "Accès au microphone refusé. Autorisez son utilisation dans le navigateur.",
+                    'no-speech': "Aucune parole détectée. Vous pouvez relancer la dictée."
+                };
+                dictationStatus.textContent = errorMessages[event.error]
+                    || `Erreur de reconnaissance vocale : ${event.error}.`;
+            };
+
+            dictationRecognition.onend = () => {
+                isDictating = false;
+                delete dictationText.dataset.baseText;
+                updateDictationControls();
+                if (dictationStatus.textContent.startsWith("Écoute en cours")) {
+                    dictationStatus.textContent = "Dictée terminée. Relisez la transcription avant de l'envoyer.";
+                }
+            };
+
+            startDictationBtn.addEventListener('click', () => {
+                dictationText.dataset.baseText = dictationText.value.trim();
+                dictationStatus.textContent = "Démarrage de la reconnaissance vocale…";
+                try {
+                    dictationRecognition.start();
+                } catch (error) {
+                    dictationStatus.textContent = `Impossible de démarrer la dictée : ${error.message}`;
+                }
+            });
+
+            stopDictationBtn.addEventListener('click', () => dictationRecognition.stop());
+        }
+
+        dictationModal?.addEventListener('hidden.bs.modal', () => {
+            if (isDictating) dictationRecognition.stop();
+        });
+
+        sendDictationBtn.addEventListener('click', async () => {
+            const message = dictationText.value.trim();
+            if (!message) {
+                dictationStatus.textContent = "Saisissez ou dictez un message avant de l'envoyer.";
+                return;
+            }
+
+            sendDictationBtn.disabled = true;
+            dictationStatus.textContent = "Envoi de la transcription à l'agent IA…";
+            try {
+                const response = await fetch(PEA_TRADE_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetAccount: 'PEA', message })
+                });
+                if (!response.ok) {
+                    throw new Error(`Le webhook a répondu avec le statut HTTP ${response.status}.`);
+                }
+                dictationStatus.textContent = "Transcription envoyée à l'agent IA.";
+            } catch (error) {
+                console.error("Erreur lors de l'envoi de la dictée PEA au webhook :", error);
+                dictationStatus.textContent = `Échec de l'envoi : ${error.message}. Vérifiez le webhook et sa configuration CORS.`;
+            } finally {
+                updateDictationControls();
+            }
+        });
+
+        updateDictationControls();
+    }
 
     // Ajustement dynamique des champs du formulaire
     const opType = document.getElementById('op-type');
@@ -1326,20 +1448,7 @@ function updateUI() {
 
     const totalPortfolio = holdingsValue + p.cash;
 
-    // Calcul Total des gains (Réalisés)
-    let totalRealizedPnl = 0;
-    const groupedItems = groupOperationsIntoPositions(state.operations);
-    groupedItems.forEach(item => {
-        if (item.type === 'position') {
-            const metrics = calculatePEAPositionMetrics(item);
-            if (item.status === 'closed') {
-                totalRealizedPnl += metrics.pnl;
-            } else if (item.status === 'open' && metrics.totalExitQty > 0) {
-                const realized = metrics.totalExitVal - (metrics.totalExitQty * metrics.averageEntryPrice) - metrics.totalExitFees;
-                totalRealizedPnl += realized;
-            }
-        }
-    });
+    const totalRealizedPnl = p.realizedPnL;
 
     // KPIs HTML
     document.getElementById('total-portfolio-value').textContent = formatCurrency(totalPortfolio);
@@ -1428,12 +1537,244 @@ function updateUI() {
 
     // Remplir Tableau Holdings (Nouveau)
     renderHoldingsTable(holdingsList, totalPortfolio);
-    renderAssetPerformanceTable(holdingsList, totalPortfolio);
+    renderAssetPerformanceTable(totalPortfolio);
+    renderDividendSummaryTable();
 
     // Remplir Tableau Historique (Nouveau)
     renderHistoryTable();
 
     updateCharts(holdingsList, totalPortfolio);
+}
+
+function renderDividendSummaryTable() {
+    const tbody = document.getElementById('dividend-summary-body');
+    const totalEl = document.getElementById('dividend-summary-total');
+    if (!tbody || !totalEl) return;
+
+    const dividendsByAsset = new Map();
+    state.operations
+        .filter(operation => operation.type === 'dividend')
+        .forEach(operation => {
+            const name = String(operation.asset || '').trim() || 'Action non renseignée';
+            const ticker = String(operation.ticker || '').trim().toUpperCase();
+            const key = `${name.toLocaleLowerCase()}|${ticker}`;
+            const amount = parseFloat(operation.amount);
+            const quantity = parseFloat(operation.quantity) || 0;
+            const price = parseFloat(operation.price) || 0;
+            const received = Number.isFinite(amount) && amount !== 0 ? amount : quantity * price;
+            const entry = dividendsByAsset.get(key) || { name, ticker, payments: 0, total: 0 };
+
+            entry.payments++;
+            entry.total += received;
+            dividendsByAsset.set(key, entry);
+        });
+
+    const entries = [...dividendsByAsset.values()]
+        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'fr'));
+    const totalReceived = entries.reduce((sum, entry) => sum + entry.total, 0);
+
+    tbody.innerHTML = '';
+    totalEl.textContent = formatCurrency(totalReceived);
+
+    if (entries.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 3;
+        cell.className = 'text-center text-white-50 py-4';
+        cell.textContent = 'Aucun dividende enregistré';
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+    }
+
+    entries.forEach(entry => {
+        const row = document.createElement('tr');
+        const assetCell = document.createElement('td');
+        assetCell.className = 'ps-3';
+        const assetName = document.createElement('span');
+        assetName.className = 'fw-semibold';
+        assetName.textContent = entry.name;
+        assetCell.appendChild(assetName);
+        if (entry.ticker) {
+            const ticker = document.createElement('small');
+            ticker.className = 'd-block text-white-50';
+            ticker.textContent = entry.ticker;
+            assetCell.appendChild(ticker);
+        }
+
+        const paymentsCell = document.createElement('td');
+        paymentsCell.className = 'text-center';
+        paymentsCell.textContent = String(entry.payments);
+
+        const amountCell = document.createElement('td');
+        amountCell.className = 'text-end pe-3 text-success fw-semibold';
+        amountCell.textContent = formatCurrency(entry.total);
+
+        row.append(assetCell, paymentsCell, amountCell);
+        tbody.appendChild(row);
+    });
+}
+
+function getAssetRating(value) {
+    const raw = String(value || '').trim();
+    const normalized = raw.toLowerCase().replace(/[\s-]+/g, '_');
+    const ratings = {
+        strong_buy: { label: 'Strong Buy', className: 'rating-strong-buy', icon: 'bi bi-graph-up-arrow', sentiment: 'positive' },
+        buy: { label: 'Buy', className: 'rating-buy', icon: 'bi bi-arrow-up-right', sentiment: 'positive' },
+        neutre: { label: 'Neutre', className: 'rating-neutral', icon: 'bi bi-dash-lg', sentiment: 'neutral' },
+        neutral: { label: 'Neutre', className: 'rating-neutral', icon: 'bi bi-dash-lg', sentiment: 'neutral' },
+        sell: { label: 'Sell', className: 'rating-sell', icon: 'bi bi-arrow-down-right', sentiment: 'negative' },
+        strong_sell: { label: 'Strong Sell', className: 'rating-strong-sell', icon: 'bi bi-graph-down-arrow', sentiment: 'negative' }
+    };
+
+    return {
+        ...(ratings[normalized] || {
+            label: raw || 'Non renseigné',
+            className: raw ? 'rating-unknown' : 'rating-empty',
+            icon: raw ? 'bi bi-question-circle' : 'bi bi-dash-circle',
+            sentiment: 'unknown'
+        }),
+        hasValue: Boolean(raw)
+    };
+}
+
+function createAssetRatingChip(value) {
+    const rating = getAssetRating(value);
+    const chip = document.createElement('span');
+    chip.className = `asset-rating-chip ${rating.className}`;
+    chip.title = `Signal : ${rating.label}`;
+
+    const icon = document.createElement('i');
+    icon.className = rating.icon;
+    icon.setAttribute('aria-hidden', 'true');
+
+    const label = document.createElement('span');
+    label.textContent = rating.label;
+    chip.append(icon, label);
+    return chip;
+}
+
+function getAssetPredictionScore(value, pnlPercent) {
+    const rating = getAssetRating(value);
+    if (rating.sentiment === 'positive') return { rating, score: pnlPercent };
+    if (rating.sentiment === 'negative') return { rating, score: -pnlPercent };
+    return { rating, score: null };
+}
+
+function summarizeAssetPredictions(positions, field) {
+    const predictions = positions
+        .map(position => getAssetPredictionScore(position[field], position.pnlPercent))
+        .filter(prediction => prediction.score !== null);
+    if (predictions.length === 0) return 'Aucune prévision';
+    const confirmed = predictions.filter(prediction => prediction.score > 0).length;
+    return `${confirmed} / ${predictions.length} confirmées`;
+}
+
+function createDirectionalMeter(value, description) {
+    const meter = document.createElement('div');
+    meter.className = 'asset-performance-meter';
+    meter.setAttribute('role', 'img');
+    meter.setAttribute('aria-label', description);
+
+    const center = document.createElement('span');
+    center.className = 'asset-performance-meter-center';
+    meter.appendChild(center);
+
+    if (Number.isFinite(value) && value !== 0) {
+        const width = Math.min(Math.abs(value), 50);
+        const bar = document.createElement('span');
+        bar.className = `asset-performance-meter-bar ${value > 0 ? 'is-positive' : 'is-negative'}`;
+        bar.style.width = `${width}%`;
+        bar.style.left = value > 0 ? '50%' : `${50 - width}%`;
+        meter.appendChild(bar);
+    }
+
+    return meter;
+}
+
+function createAssetSignalCell(value, pnlPercent, signalName) {
+    const cell = document.createElement('td');
+    cell.className = 'asset-signal-cell';
+    cell.dataset.label = `Signal ${signalName.toLowerCase()}`;
+
+    const { rating, score } = getAssetPredictionScore(value, pnlPercent);
+    cell.appendChild(createAssetRatingChip(value));
+
+    const outcome = document.createElement('small');
+    if (score !== null) {
+        outcome.className = `asset-signal-outcome ${score > 0 ? 'text-success' : score < 0 ? 'text-danger' : 'text-white-50'}`;
+        outcome.textContent = score > 0
+            ? `Confirmée · +${score.toFixed(2)} %`
+            : score < 0
+                ? `À contre-sens · ${score.toFixed(2)} %`
+                : 'Stable · 0,00 %';
+        cell.append(outcome, createDirectionalMeter(score, `${signalName} : ${outcome.textContent}`));
+    } else {
+        outcome.className = 'asset-signal-outcome text-white-50';
+        outcome.textContent = rating.sentiment === 'neutral'
+            ? `Sans direction · P/L ${pnlPercent > 0 ? '+' : ''}${pnlPercent.toFixed(2)} %`
+            : 'Aucune prévision évaluée';
+        cell.appendChild(outcome);
+        if (rating.sentiment === 'neutral') {
+            cell.appendChild(createDirectionalMeter(0, `${signalName} : sans direction, P/L ${outcome.textContent}`));
+        }
+    }
+
+    return cell;
+}
+
+function createTargetPriceCell(targetPrice, referencePrice, isClosed) {
+    const cell = document.createElement('td');
+    cell.className = 'asset-target-cell';
+    cell.dataset.label = 'Objectif 1 an';
+
+    const target = Number(targetPrice);
+    const reference = Number(referencePrice);
+    if (!Number.isFinite(target) || target <= 0) {
+        const missing = document.createElement('span');
+        missing.className = 'asset-target-missing';
+        missing.textContent = 'Objectif non renseigné';
+        cell.appendChild(missing);
+        return cell;
+    }
+    if (!Number.isFinite(reference) || reference <= 0) {
+        const targetValue = document.createElement('strong');
+        targetValue.className = 'asset-target-value';
+        targetValue.textContent = formatCurrency(target);
+        const unavailable = document.createElement('span');
+        unavailable.className = 'asset-target-missing';
+        unavailable.textContent = isClosed ? 'Prix de vente indisponible' : 'Cours indisponible';
+        cell.append(targetValue, unavailable);
+        return cell;
+    }
+
+    const gapAmount = target - reference;
+    const gapPercent = (gapAmount / reference) * 100;
+    const targetValue = document.createElement('strong');
+    targetValue.className = 'asset-target-value';
+    targetValue.textContent = formatCurrency(target);
+    const referenceValue = document.createElement('small');
+    referenceValue.className = 'asset-target-current';
+    referenceValue.textContent = isClosed
+        ? `Prix de vente moyen ${formatCurrency(reference)}`
+        : `Cours actuel ${formatCurrency(reference)}`;
+    const gap = document.createElement('small');
+    gap.className = `asset-target-gap ${gapPercent > 0 ? 'text-success' : gapPercent < 0 ? 'text-danger' : 'text-white-50'}`;
+    const signedAmount = `${gapAmount > 0 ? '+' : gapAmount < 0 ? '−' : ''}${formatCurrency(Math.abs(gapAmount))}`;
+    const signedPercent = `${gapPercent > 0 ? '+' : gapPercent < 0 ? '−' : ''}${Math.abs(gapPercent).toFixed(1)} %`;
+    gap.textContent = isClosed
+        ? `Écart objectif / vente ${signedAmount} (${signedPercent})`
+        : gapPercent > 0
+            ? `Potentiel +${formatCurrency(gapAmount)} (+${gapPercent.toFixed(1)} %)`
+            : gapPercent < 0
+                ? `Sous le cours ${formatCurrency(Math.abs(gapAmount))} (${signedPercent})`
+                : 'Au niveau du cours';
+
+    cell.append(targetValue, referenceValue, gap, createDirectionalMeter(
+        gapPercent,
+        `Écart entre l'objectif et ${isClosed ? 'le prix de vente moyen' : 'le cours actuel'} : ${gap.textContent}`
+    ));
+    return cell;
 }
 
 function sortAssetPerformanceRows(rows) {
@@ -1447,22 +1788,10 @@ function sortAssetPerformanceRows(rows) {
                 valueA = (a.name || '').toLowerCase();
                 valueB = (b.name || '').toLowerCase();
                 return valueA.localeCompare(valueB) * direction;
-            case 'status':
-                valueA = (a.status || '').toLowerCase();
-                valueB = (b.status || '').toLowerCase();
-                return valueA.localeCompare(valueB) * direction;
-            case 'weight':
-                valueA = a.weight || 0;
-                valueB = b.weight || 0;
-                break;
-            case 'targetPrice1Y':
-                valueA = a.targetPrice1Y || 0;
-                valueB = b.targetPrice1Y || 0;
-                break;
             case 'pnl':
             default:
-                valueA = a.pnlCapitalPercent || 0;
-                valueB = b.pnlCapitalPercent || 0;
+                valueA = a.pnl || 0;
+                valueB = b.pnl || 0;
         }
 
         if (valueA < valueB) return -1 * direction;
@@ -1472,47 +1801,32 @@ function sortAssetPerformanceRows(rows) {
 }
 
 function updateAssetPerformanceSortIcons() {
-    document.querySelectorAll('#asset-performance-table th.sortable i').forEach(icon => {
-        icon.className = 'bi bi-arrow-down-up text-muted ms-1';
+    document.querySelectorAll('#asset-performance-table .asset-performance-sort').forEach(button => {
+        const icon = button.querySelector('i');
+        if (icon) icon.className = 'bi bi-arrow-down-up';
+        button.closest('th')?.removeAttribute('aria-sort');
     });
 
-    const active = document.querySelector(`#asset-performance-table th.sortable[data-sort="${assetPerformanceSortColumn}"] i`);
-    if (active) {
-        active.className = assetPerformanceSortDirection === 'asc'
-            ? 'bi bi-arrow-up text-primary ms-1'
-            : 'bi bi-arrow-down text-primary ms-1';
+    const active = document.querySelector(`#asset-performance-table .asset-performance-sort[data-sort="${assetPerformanceSortColumn}"]`);
+    const activeIcon = active?.querySelector('i');
+    if (activeIcon) {
+        activeIcon.className = assetPerformanceSortDirection === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+        active.closest('th')?.setAttribute('aria-sort', assetPerformanceSortDirection === 'asc' ? 'ascending' : 'descending');
     }
 }
 
-function formatRatingLabel(value) {
-    const normalized = String(value || '').trim().toLowerCase();
-    const labels = {
-        strong_sell: 'Strong Sell',
-        sell: 'Sell',
-        neutre: 'Neutre',
-        buy: 'Buy',
-        strong_buy: 'Strong Buy'
-    };
-    return labels[normalized] || value || '—';
-}
-
-function getRatingBadgeClass(value) {
-    const normalized = String(value || '').trim().toLowerCase();
-    if (['buy', 'strong_buy'].includes(normalized)) return 'bg-success';
-    if (['sell', 'strong_sell'].includes(normalized)) return 'bg-danger';
-    if (normalized === 'neutre') return 'bg-warning text-dark';
-    return 'bg-secondary';
-}
-
-function renderAssetPerformanceTable(holdingsList, totalPortfolio) {
+function renderAssetPerformanceTable(totalPortfolio) {
     const tbody = document.getElementById('asset-performance-body');
     if (!tbody) return;
 
     tbody.innerHTML = '';
+    updateAssetPerformanceSortIcons();
 
-    const investedBase = state.portfolio?.invested || 0;
     const statusFilter = (document.getElementById('asset-performance-status-filter')?.value || 'all').toLowerCase();
-    assetPerformanceStatusFilter = statusFilter;
+    const countEl = document.getElementById('asset-performance-count');
+    const totalPnlEl = document.getElementById('asset-performance-total-pnl');
+    const analystSummaryEl = document.getElementById('asset-performance-analyst-summary');
+    const technicalSummaryEl = document.getElementById('asset-performance-technical-summary');
 
     const positions = groupOperationsIntoPositions(state.operations)
         .filter(item => item.type === 'position')
@@ -1527,77 +1841,125 @@ function renderAssetPerformanceTable(holdingsList, totalPortfolio) {
             const ticker = (item.ticker || '').trim().toUpperCase();
             const currentPrice = (state.livePrices && ((ticker && state.livePrices[ticker]) || state.livePrices[item.asset])) || (item.entries?.length ? item.entries[item.entries.length - 1].price : 0);
             const currentValue = item.status === 'open' ? remainingQty * currentPrice : 0;
-            const pnlCapitalPercent = investedBase > 0 ? (metrics.pnl / investedBase) * 100 : 0;
             const latestBuy = [...(item.entries || [])].reverse().find(entry => entry.type === 'buy') || null;
-            const analystNote = latestBuy?.analystNote || '';
-            const technicalData = latestBuy?.technicalData || '';
 
             return {
                 name: item.asset,
                 ticker: item.ticker || '',
                 status: item.status || 'open',
                 value: currentValue,
+                currentPrice: Number(currentPrice) || 0,
+                averageExitPrice: metrics.averageExitPrice,
                 pnl: metrics.pnl,
-                pnlCapitalPercent,
                 pnlPercent: metrics.totalEntryVal > 0 ? (metrics.pnl / metrics.totalEntryVal) * 100 : 0,
-                analystNote,
-                technicalData,
+                analystNote: latestBuy?.analystNote || '',
+                technicalData: latestBuy?.technicalData || '',
                 targetPrice1Y: latestBuy?.targetPrice1Y || null,
             };
         });
 
+    if (countEl) countEl.textContent = `${positions.length} ${positions.length === 1 ? 'position' : 'positions'}`;
+    const totalPnl = positions.reduce((sum, item) => sum + item.pnl, 0);
+    if (totalPnlEl) {
+        totalPnlEl.textContent = `${totalPnl >= 0 ? '+' : ''}${formatCurrency(totalPnl)}`;
+        totalPnlEl.className = totalPnl > 0 ? 'text-success' : totalPnl < 0 ? 'text-danger' : 'text-white-50';
+    }
+    if (analystSummaryEl) analystSummaryEl.textContent = summarizeAssetPredictions(positions, 'analystNote');
+    if (technicalSummaryEl) technicalSummaryEl.textContent = summarizeAssetPredictions(positions, 'technicalData');
+
     if (positions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Aucune action dans l’historique.</td></tr>';
+        const row = document.createElement('tr');
+        row.className = 'asset-performance-empty-row';
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.className = 'text-center text-white-50 py-5';
+        cell.textContent = statusFilter === 'all'
+            ? 'Aucune position enregistrée pour le moment.'
+            : 'Aucune position ne correspond à ce filtre.';
+        row.appendChild(cell);
+        tbody.appendChild(row);
         return;
     }
-
-    const maxAbsPnl = positions.reduce((max, item) => Math.max(max, Math.abs(item.pnlCapitalPercent)), 0);
 
     const rows = sortAssetPerformanceRows(
         positions.map(item => ({
             ...item,
             weight: totalPortfolio > 0 ? (item.value / totalPortfolio) * 100 : 0,
-            status: item.status || 'open'
         }))
     );
 
     rows.forEach(item => {
-            const weight = item.weight || 0;
-            const barWidth = maxAbsPnl > 0 ? Math.min(100, Math.abs(item.pnlCapitalPercent) * 100 / maxAbsPnl) : 0;
-            const colorClass = item.pnlCapitalPercent >= 0 ? 'bg-success' : 'bg-danger';
-            const badge = item.status === 'closed' ? '<span class="badge bg-secondary">Clôturée</span>' : '<span class="badge bg-info text-dark">Ouverte</span>';
+        const name = String(item.name || 'Action non renseignée').trim();
+        const pnl = Number(item.pnl) || 0;
+        const pnlPercent = Number.isFinite(item.pnlPercent) ? item.pnlPercent : 0;
+        const isPositive = pnl > 0;
+        const isNegative = pnl < 0;
+        const resultClass = isPositive ? 'text-success' : isNegative ? 'text-danger' : 'text-white-50';
+        const row = document.createElement('tr');
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="ps-4">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="symbol-badge bg-secondary">${(item.name || 'AC').substring(0, 2).toUpperCase()}</span>
-                        <div class="fw-semibold">${item.name}</div>
-                    </div>
-                </td>
-                <td class="text-center">
-                    ${badge}
-                </td>
-                <td class="text-center">
-                    <span class="badge ${item.analystNote ? getRatingBadgeClass(item.analystNote) : 'bg-secondary'}">${item.analystNote ? formatRatingLabel(item.analystNote) : '—'}</span>
-                </td>
-                <td class="text-center">
-                    <span class="badge ${item.technicalData ? getRatingBadgeClass(item.technicalData) : 'bg-secondary'}">${item.technicalData ? formatRatingLabel(item.technicalData) : '—'}</span>
-                </td>
-                <td class="text-end">${item.targetPrice1Y != null ? `${item.targetPrice1Y.toFixed(2)} €` : '—'}</td>
-                <td class="text-end text-white-50">${item.status === 'closed' ? '0.0%' : weight.toFixed(1) + '%'}</td>
-                <td class="text-end fw-semibold ${item.pnlCapitalPercent >= 0 ? 'text-success' : 'text-danger'}">${item.pnlCapitalPercent >= 0 ? '+' : ''}${item.pnlCapitalPercent.toFixed(2)}%</td>
-                <td class="text-end pe-4">
-                    <div class="d-flex align-items-center gap-2 justify-content-end">
-                        <span class="small ${item.pnlCapitalPercent >= 0 ? 'text-success' : 'text-danger'}">${item.pnlCapitalPercent >= 0 ? '+' : ''}${item.pnlCapitalPercent.toFixed(1)}%</span>
-                        <div class="progress" style="width: 110px; height: 8px; background-color: rgba(148,163,184,0.15);">
-                            <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${barWidth}%"></div>
-                        </div>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        const assetCell = document.createElement('td');
+        assetCell.className = 'ps-4';
+        assetCell.dataset.label = 'Action';
+        const assetInfo = document.createElement('div');
+        assetInfo.className = 'asset-performance-asset';
+        const initials = name.split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toUpperCase();
+        const symbol = document.createElement('span');
+        symbol.className = 'asset-performance-symbol';
+        symbol.textContent = initials || '—';
+
+        const assetDetails = document.createElement('div');
+        assetDetails.className = 'asset-performance-details';
+        const nameLine = document.createElement('div');
+        nameLine.className = 'asset-performance-name-line';
+        const assetName = document.createElement('span');
+        assetName.className = 'fw-semibold';
+        assetName.textContent = name;
+        const statusBadge = document.createElement('span');
+        statusBadge.className = item.status === 'closed'
+            ? 'badge rounded-pill bg-secondary-subtle text-secondary-emphasis'
+            : 'badge rounded-pill bg-success-subtle text-success-emphasis';
+        statusBadge.textContent = item.status === 'closed' ? 'Clôturée' : 'En portefeuille';
+        nameLine.append(assetName, statusBadge);
+        assetDetails.appendChild(nameLine);
+
+        const ticker = String(item.ticker || '').trim().toUpperCase();
+        const tickerMetadata = document.createElement('small');
+        tickerMetadata.className = 'asset-performance-metadata';
+        tickerMetadata.textContent = ticker;
+        if (ticker) assetDetails.appendChild(tickerMetadata);
+        const positionMetadata = document.createElement('small');
+        positionMetadata.className = 'asset-performance-metadata asset-position-metadata';
+        positionMetadata.textContent = item.status === 'closed'
+            ? 'Position clôturée'
+            : `${formatCurrency(item.value)} · ${(item.weight || 0).toFixed(1)} % du portefeuille`;
+        assetDetails.appendChild(positionMetadata);
+
+        assetInfo.append(symbol, assetDetails);
+        assetCell.appendChild(assetInfo);
+
+        const analystCell = createAssetSignalCell(item.analystNote, pnlPercent, 'Analyste');
+        const technicalCell = createAssetSignalCell(item.technicalData, pnlPercent, 'Technique');
+        const targetCell = createTargetPriceCell(
+            item.targetPrice1Y,
+            item.status === 'closed' ? item.averageExitPrice : item.currentPrice,
+            item.status === 'closed'
+        );
+
+        const performanceCell = document.createElement('td');
+        performanceCell.className = 'text-end pe-4';
+        performanceCell.dataset.label = 'Résultat position';
+        const result = document.createElement('div');
+        result.className = `asset-performance-result ${resultClass}`;
+        const amount = document.createElement('strong');
+        amount.textContent = `${pnl > 0 ? '+' : ''}${formatCurrency(pnl)}`;
+        const percent = document.createElement('span');
+        percent.textContent = `${pnlPercent > 0 ? '+' : ''}${pnlPercent.toFixed(2)} %`;
+        result.append(amount, percent);
+
+        performanceCell.appendChild(result);
+        row.append(assetCell, analystCell, technicalCell, targetCell, performanceCell);
+        tbody.appendChild(row);
+    });
 }
 
 function sortHoldingsRows(rows) {
@@ -1610,10 +1972,6 @@ function sortHoldingsRows(rows) {
             case 'asset':
                 valueA = (a.name || '').toLowerCase();
                 valueB = (b.name || '').toLowerCase();
-                return valueA.localeCompare(valueB) * direction;
-            case 'type':
-                valueA = (a.type || 'Action').toLowerCase();
-                valueB = (b.type || 'Action').toLowerCase();
                 return valueA.localeCompare(valueB) * direction;
             case 'quantity':
                 valueA = a.qty || 0;
@@ -1682,7 +2040,7 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
     }
 
     if (holdingsList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Aucune ligne en portefeuille. Ajoutez une opération !</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">Aucune ligne en portefeuille. Ajoutez une opération !</td></tr>';
     } else {
         const sortedHoldings = sortHoldingsRows(holdingsList);
         const positions = groupOperationsIntoPositions(state.operations);
@@ -1730,12 +2088,11 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
                             <div class="symbol-badge bg-secondary me-2">${item.name.substring(0, 2).toUpperCase()}</div>
                             <div>
                                 <div class="fw-bold">${item.name}</div>
-                                ${tickerSafe ? `<small class="text-muted">${tickerSafe}</small>` : ''}
+                                <div class="mt-1"><span class="badge bg-secondary opacity-50">${tickerSafe ? `${tickerSafe} · ` : ''}Action</span></div>
                             </div>
                         </div>
                     </div>
                 </td>
-                <td><span class="badge bg-secondary opacity-50">Action</span></td>
                 <td class="text-end font-monospace">${item.qty.toFixed(2)}</td>
                 <td class="text-end font-monospace">${item.pru.toFixed(2)} €</td>
                 <td class="text-end font-monospace text-info">${item.currentPrice.toFixed(2)} €</td>
@@ -1770,7 +2127,7 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
                     const summaryRow = document.createElement('tr');
                     summaryRow.className = 'holdings-summary-row';
                     summaryRow.innerHTML = `
-                        <td colspan="11" class="py-2 bg-dark bg-opacity-10 small text-white">
+                        <td colspan="10" class="py-2 bg-dark bg-opacity-10 small text-white">
                             <div class="d-flex flex-wrap gap-3 align-items-center">
                                 <span class="badge bg-danger">Vente partielle</span>
                                 <span>${new Date(lastSale.date).toLocaleDateString('fr-FR')}</span>
@@ -1810,7 +2167,6 @@ function renderHoldingsTable(holdingsList, totalPortfolio) {
             tfoot.innerHTML = `
                 <tr>
                     <td class="ps-4 fw-bold text-white">TOTAL</td>
-                    <td></td>
                     <td class="text-end font-monospace fw-bold text-white">${totalQty.toFixed(2)}</td>
                     <td class="text-end font-monospace text-muted">—</td>
                     <td class="text-end font-monospace text-muted">—</td>
@@ -1978,51 +2334,52 @@ function getOperationTtf(op) {
 }
 
 function getPositionRealizedSales(position) {
-    const entries = position.entries.map(e => ({
-        remainingQty: e.quantity,
-        totalQty: e.quantity,
-        unitPrice: e.price,
-        fees: e.fees || 0,
-        ttf: getOperationTtf(e)
-    }));
-
     const sales = [];
-    position.exits.forEach(exit => {
-        let remainingToAllocate = exit.quantity;
-        let costBasis = 0;
+    let quantity = 0;
+    let totalCost = 0;
+    let hasPosition = false;
+    const operations = sortOperationsByDate([
+        ...position.entries.map(entry => ({ ...entry, type: 'buy' })),
+        ...position.exits.map(exit => ({ ...exit, type: 'sell' }))
+    ]);
 
-        while (remainingToAllocate > 0 && entries.length > 0) {
-            const entry = entries[0];
-            const qtyTaken = Math.min(entry.remainingQty, remainingToAllocate);
-            const feesPerShare = entry.totalQty > 0 ? entry.fees / entry.totalQty : 0;
-            const ttfPerShare = entry.totalQty > 0 ? entry.ttf / entry.totalQty : 0;
+    operations.forEach(op => {
+        const qty = parseFloat(op.quantity) || 0;
+        const price = parseFloat(op.price) || 0;
+        const fees = parseFloat(op.fees) || 0;
+        const ttf = parseFloat(op.ttf) || 0;
+        const totalFees = fees + ttf;
+        const amountValue = parseFloat(op.amount) || (qty * price);
+        const totalAmount = (qty * price) || amountValue;
 
-            costBasis += qtyTaken * entry.unitPrice;
-            costBasis += qtyTaken * feesPerShare;
-            costBasis += qtyTaken * ttfPerShare;
-
-            entry.remainingQty -= qtyTaken;
-            remainingToAllocate -= qtyTaken;
-
-            if (entry.remainingQty <= 0) {
-                entries.shift();
-            }
+        if (op.type === 'buy') {
+            quantity += qty;
+            totalCost += totalAmount + totalFees;
+            hasPosition = true;
+            return;
         }
 
-        const saleAmount = exit.quantity * exit.price;
-        const exitFees = exit.fees || 0;
-        const exitTtf = getOperationTtf(exit);
-        const netProceeds = saleAmount - exitFees - exitTtf;
-        const pnl = netProceeds - costBasis;
-        const percent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
+        if (op.type !== 'sell' || !hasPosition) return;
+
+        const avgCostPerShare = quantity > 0 ? (totalCost / quantity) : 0;
+        const soldCostBasis = avgCostPerShare * qty;
+        const netProceeds = amountValue - totalFees;
+        const pnl = netProceeds - soldCostBasis;
+        const percent = soldCostBasis > 0 ? (pnl / soldCostBasis) * 100 : 0;
 
         sales.push({
-            ...exit,
-            costBasis,
+            ...op,
+            costBasis: soldCostBasis,
             netProceeds,
             realizedPnl: pnl,
             realizedPercent: percent
         });
+
+        quantity -= qty;
+        totalCost = Math.max(0, totalCost - soldCostBasis);
+        if (quantity <= 0.0001) {
+            hasPosition = false;
+        }
     });
 
     return sales;
@@ -2034,7 +2391,6 @@ let holdingsSortColumn = 'value';
 let holdingsSortDirection = 'desc';
 let assetPerformanceSortColumn = 'pnl';
 let assetPerformanceSortDirection = 'desc';
-let assetPerformanceStatusFilter = 'all';
 
 function updatePEAHistorySortIcons() {
     document.querySelectorAll('#history-table th.sortable i').forEach(icon => {
@@ -2346,19 +2702,18 @@ document.querySelectorAll('#holdings-table th.sortable').forEach(th => {
     });
 });
 
-document.querySelectorAll('#asset-performance-table th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-        const sortKey = th.dataset.sort;
+document.querySelectorAll('#asset-performance-table .asset-performance-sort').forEach(button => {
+    button.addEventListener('click', () => {
+        const sortKey = button.dataset.sort;
         if (!sortKey) return;
 
         if (assetPerformanceSortColumn === sortKey) {
             assetPerformanceSortDirection = assetPerformanceSortDirection === 'asc' ? 'desc' : 'asc';
         } else {
             assetPerformanceSortColumn = sortKey;
-            assetPerformanceSortDirection = 'desc';
+            assetPerformanceSortDirection = sortKey === 'asset' ? 'asc' : 'desc';
         }
 
-        updateAssetPerformanceSortIcons();
         recalculatePortfolio();
         updateUI();
     });
@@ -2401,19 +2756,6 @@ if (assetPerformanceStatusFilterSelect) {
     assetPerformanceStatusFilterSelect.addEventListener('change', () => {
         recalculatePortfolio();
         updateUI();
-    });
-}
-
-// Accordéon pour le tableau Performance par action
-const assetPerformanceToggle = document.getElementById('asset-performance-toggle');
-const assetPerformanceContent = document.getElementById('asset-performance-content');
-const assetPerformanceChevron = document.getElementById('asset-performance-chevron');
-
-if (assetPerformanceToggle && assetPerformanceContent) {
-    assetPerformanceToggle.addEventListener('click', () => {
-        const isVisible = assetPerformanceContent.style.display !== 'none';
-        assetPerformanceContent.style.display = isVisible ? 'none' : '';
-        assetPerformanceChevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
     });
 }
 
